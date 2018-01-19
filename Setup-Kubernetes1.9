@@ -20,6 +20,8 @@ yum-config-manager \
 
 yum install -y docker-ce
 
+##################### pause
+
 cat << EOF > /etc/docker/daemon.json
 {
   "exec-opts": ["native.cgroupdriver=systemd"]
