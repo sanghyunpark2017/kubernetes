@@ -57,11 +57,11 @@ mkdir -p /mnt/private
 systemctl enable rpcbind
 systemctl start rpcbind
 
-showmount -e X.X.X.X (NFS Server)
+showmount -e 10.10.64.64
 
 vi /etc/fstab
-X.X.X.X:/nfs/public /mnt/public nfs hard 0 0
-X.X.X.X:/nfs/private /mnt/private nfs hard 0 0
+10.10.64.64:/nfs/public /mnt/public nfs hard 0 0
+10.10.64.64:/nfs/private /mnt/private nfs hard 0 0
 
 mount -a
 
