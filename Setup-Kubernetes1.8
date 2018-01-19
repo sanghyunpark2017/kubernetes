@@ -8,6 +8,23 @@ vi /etc/fstab
 modprobe br_netfilter
 modprobe ip_conntrack
 
+=====================elasticsearch container ======================================
+
+cat << EOF >> /etc/sysctl.conf
+vm.max_map_count=262144
+EOF
+
+cat << EOF >> /etc/security/limits.conf
+*          soft    nofile          65536
+*          hard    nofile          65536
+EOF
+
+sysctl -w vm.max_map_count=262144
+
+===========================================================
+
+
+
 #도커설치
 
 yum install -y docker
