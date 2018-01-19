@@ -19,11 +19,12 @@ cat << EOF >> /etc/security/limits.conf
 *          hard    nofile          65536
 EOF
 
-sysctl -w vm.max_map_count=262144
+#ysctl -w vm.max_map_count=262144
 
 ===========================================================
 
-
+systemctl stop firewalld
+systemctl disable firewalld
 
 #도커설치
 
@@ -68,12 +69,6 @@ export KUBECONFIG=$HOME/.kube/config
 #pod network 설치(Calico사용)
 
 kubectl apply -f https://docs.projectcalico.org/v2.6/getting-started/kubernetes/installation/hosted/kubeadm/1.6/calico.yaml
-
-
-
-#마스터서버
-systemctl stop firewalld
-systemctl disable firewalld
 
 #노드조인
 kubeadm join --token <token> <master-ip>:<master-port> --discovery-token-ca-cert-hash sha256:<hash>
