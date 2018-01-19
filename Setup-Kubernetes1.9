@@ -20,7 +20,13 @@ yum-config-manager \
 
 yum install -y docker-ce
 
-##################### pause
+#####################
+### cgroup driver
+#####################
+
+
+systemctl start docker
+systemctl stop docker 
 
 cat << EOF > /etc/docker/daemon.json
 {
@@ -29,9 +35,7 @@ cat << EOF > /etc/docker/daemon.json
 EOF
 
 systemctl enable docker
-
 systemctl start docker
-
 systemctl status docker
 
 #############################
