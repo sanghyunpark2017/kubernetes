@@ -58,6 +58,14 @@ EOF
 sysctl --system
 
 
+############################
+dummy step
+############################
+
+systemctl disable firewalld
+shutdown -r now
+
+
 #############################
 ### Initial Master
 #############################
