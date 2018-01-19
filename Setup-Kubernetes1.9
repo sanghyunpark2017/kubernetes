@@ -73,7 +73,7 @@ shutdown -r now
 
 
 #############################
-### Initial Master
+### MASTER - Initial Master & network
 #############################
 
 
@@ -85,18 +85,19 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 kubectl get node
 
-#############################
-### Reboot
-#############################
+shutdown -r now
 
 kubectl get node
 
-
-### Installing a pod network
-
 kubectl apply -f https://docs.projectcalico.org/v2.6/getting-started/kubernetes/installation/hosted/kubeadm/1.6/calico.yaml
 
-### Join my nodes
+
+#############################
+### Nodes
+#############################
+
+JOIN 
+
 
 ####################################
 ##### 대시보드
