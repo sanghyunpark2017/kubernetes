@@ -88,6 +88,32 @@ kubernetes-dashboard-nodeport   NodePort  10.100.186.246  <none>  9090:32027/TCP
 
 
 
+######################
+엘라스틱서치등구동시
+######################
+
+
+
+## OS 설정
+hostname-ctl set-hostname dockerhost
+
+
+cat << EOF >> /etc/sysctl.conf
+vm.max_map_count=262144
+EOF
+
+cat << EOF >> /etc/security/limits.conf
+*          soft    nofile          65536
+*          hard    nofile          65536
+EOF
+
+sysctl -w vm.max_map_count=262144
+
+vi /etc/fstab
+swap 부분 주석처리
+
+설정반영을 위한 재부팅
+shutdown -r now
 
 
 
