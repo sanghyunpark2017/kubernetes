@@ -1,7 +1,7 @@
 
-###################
+###########################################
 master서버 3대빌드
-###################
+###########################################
 
 ###Installing OS
 Centos7, 2코어, 2GB메모리, Swap disabled
@@ -60,6 +60,86 @@ sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/ku
 systemctl daemon-reload
 systemctl restart kubelet
 
+
+###########################################
+Setting up an HA etcd cluster
+###########################################
+
+###Create etcd CA certs
+
+1.Install cfssl and cfssljson on all etcd nodes:
+curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+chmod +x /usr/local/bin/cfssl*
+
+2.SSH into etcd0 and run the following:
+
+mkdir -p /etc/kubernetes/pki/etcd
+cd /etc/kubernetes/pki/etcd
+
+cat >ca-config.json <<EOF
+ {
+    "signing": {
+        "default": {
+            "expiry": "43800h"
+        },
+        "profiles": {
+            "server": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            },
+            "client": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "client auth"
+                ]
+            },
+            "peer": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            }
+        }
+    }
+ }
+ EOF
+ cat >ca-csr.json <<EOF
+ {
+    "CN": "etcd",
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    }
+ }
+ EOF
+ 
+3.Next, generate the CA certs:
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
+
+###Generate etcd client certs
+
+cat >client.json <<EOF
+{
+  "CN": "client",
+  "key": {
+      "algo": "ecdsa",
+      "size": 256
+  }
+}
+EOF
+
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
 
 
 
