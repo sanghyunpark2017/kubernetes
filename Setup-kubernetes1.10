@@ -3,12 +3,42 @@
 master서버 3대빌드
 ###########################################
 
-###Installing OS
-Centos7, 2코어, 2GB메모리, Swap disabled
+###서버스펙
+Centos7, 2코어, 2GB메모리 3대
+
+###OS BASIC
+cat <<EOF >> /root/.bashrc
+export LS_COLORS="di=00;36:fi=00;37"
+EOF
+
+yum install -y net-tools
+
+###JAVA설치
+
+yum install -y wget
+cd /opt/
+
+wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
+
+tar xzf jdk-8u131-linux-x64.tar.gz
+cd /opt/jdk1.8.0_131/
+alternatives --install /usr/bin/java java /opt/jdk1.8.0_131/bin/java 2
+
+alternatives --config java
+
+cat << EOF >> /root/.bash_profile
+export JAVA_HOME=/opt/jdk1.8.0_131
+export JRE_HOME=/opt/jdk1.8.0_131/jre
+export PATH=$PATH:/opt/jdk1.8.0_131/bin:/opt/jdk1.8.0_131/jre/bin
+EOF
+
+###FIREWALL
+#포트 상세 정보 : https://kubernetes.io/docs/tasks/tools/install-kubeadm/#before-you-begin
 
 systemctl start firewalld
 systemctl enable firewalld
 firewall-cmd --get-default-zone
+
 firewall-cmd --permanent --zone=public --add-port=6443/tcp
 firewall-cmd --permanent --zone=public --add-port=2379-2380/tcp
 firewall-cmd --permanent --zone=public --add-port=10250/tcp
@@ -17,18 +47,17 @@ firewall-cmd --permanent --zone=public --add-port=10252/tcp
 firewall-cmd --permanent --zone=public --add-port=10255/tcp
 firewall-cmd --reload
 
-#TCP	Inbound	6443*	Kubernetes API server
-#TCP	Inbound	2379-2380	etcd server client API
-#TCP	Inbound	10250	Kubelet API
-#TCP	Inbound	10251	kube-scheduler
-#TCP	Inbound	10252	kube-controller-manager
-#TCP	Inbound	10255	Read-only Kubelet API
-
+firewall-cmd --list-ports
 
 ###Installing Docker
 yum install -y docker
-systemctl enable docker && systemctl start docker
 
+vi /etc/sysconfig/docker-storage
+DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper"
+
+
+systemctl enable docker && systemctl start docker
+systemctl status docker
 
 ###Installing kubeadm, kubelet and kubect
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
@@ -40,8 +69,11 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
+
 setenforce 0
+
 yum install -y kubelet kubeadm kubectl
+
 systemctl enable kubelet && systemctl start kubelet
 
 
@@ -55,7 +87,8 @@ sysctl --system
 docker info | grep -i cgroup
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
-sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+#만약 systemd가 아니고 cgroupfs인 경우
+#sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 systemctl daemon-reload
 systemctl restart kubelet
