@@ -650,6 +650,12 @@ Install workers
 ##################################
 ##################################
 
+MASTER서버와 동일하게, 도커설치하고 kubelet, kubeadm, kube 등 설치한다 
+
+systemctl daemon-reload
+systemctl restart kubelet
+
+
 
 
 
