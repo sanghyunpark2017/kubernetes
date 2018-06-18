@@ -105,23 +105,30 @@ Setting up an HA etcd cluster
 ###########################################
 ############################################
 
-###Create etcd CA certs
-##1.Install cfssl and cfssljson on all etcd nodes:
-##etcd서버 설치
+##etcd서버 3대  
+
+cat <<EOF >> /etc/hosts
+10.10.64.96  t1vkubeetcd1
+10.10.64.97  t1vkubeetcd2
+10.10.64.98  t1vkubeetcd3
+EOF
+
+yum install -y net-tools curl 
+
+
 curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
 curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
 chmod +x /usr/local/bin/cfssl*
+ 
 
-##2.SSH into etcd0 and run the following:
+
 
 mkdir -p /etc/kubernetes/pki/etcd
 cd /etc/kubernetes/pki/etcd
 
- 
 cat >ca-config.json <<EOF
 {
    "signing": {
-      
        "default": {
            "expiry": "43800h"
        },
@@ -156,20 +163,38 @@ cat >ca-config.json <<EOF
    }
 }
 EOF
+
+
+
+
 cat >ca-csr.json <<EOF
 {
-   "CN": "etcd",
-   "key": {
-       "algo": "rsa",
-       "size": 2048
-   }
+    "hosts": [
+        "t1vkubeetcd1",
+        "www.t1vkubeetcd1.com"
+    ],
+    "CN": "www.t1vkubeetcd1.com",
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [{
+        "C": "KR",
+        "L": "Gangseo-gu",
+        "O": "Homeplus, co LTD",
+        "OU": "Operations",
+        "ST": "Seoul"
+    }]
 }
 EOF
- 
-##3.Next, generate the CA certs:
+
+
+#generate the CA certs:
+
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
 
-###Generate etcd client certs
+
+
 
 cat >client.json <<EOF
 {
@@ -181,30 +206,30 @@ cat >client.json <<EOF
 }
 EOF
 
+
+
+#Generate etcd client certs
+
+
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
 
 
-##Create SSH access
-
+#etcd 3대 모두
 export PEER_NAME=$(hostname)
 export PRIVATE_IP=$(ip addr show eth0 | grep -Po 'inet \K[\d.]+')
 
-echo $PEER_NAME
-echo $PRIVATE_IP
-
 ssh-keygen -t rsa -b 4096 -C "sanghyun.park@homeplus.co.kr"
 
-cd /root/.ssh
-ll
-
+#2번과 3번서버에 public key 화면표시
 cat ~/.ssh/id_rsa.pub
 
 
-vi /root/.ssh/authorized_keys
-cat /root/.ssh/authorized_keys
+#1번 서버 authorized_keys에 2번서버,3번서버의 public key 넣어줌
+
+vi ~/.ssh/authorized_keys
 
 
-##etcd2번, 3번서버
+#2번과 3번서버에 1번서버의 root CA를 넣어줌
 mkdir -p /etc/kubernetes/pki/etcd
 cd /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem .
@@ -213,43 +238,31 @@ scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem .
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem .
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca-config.json .
 
-##etcd 모든 서버
-cd /etc/kubernetes/pki/etcd
+#3대 모두에서 실행
 cfssl print-defaults csr > config.json
 sed -i '0,/CN/{s/example\.net/'"$PEER_NAME"'/}' config.json
 sed -i 's/www\.example\.net/'"$PRIVATE_IP"'/' config.json
 sed -i 's/example\.net/'"$PEER_NAME"'/' config.json
-clear
 cat config.json
 
 
-cd /etc/kubernetes/pki/etcd
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server config.json | cfssljson -bare server
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer config.json | cfssljson -bare peer
 
-##First insatll etcd
-yum install -y curl gzip wget
-
-ETCD_VERSION="v3.1.12" curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
-
-또는
-cd ~
 ETCD_VERSION="v3.1.12" 
-wget https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz 
-tar -xzv -f /root/etcd-v3.1.12-linux-amd64.tar.gz  --strip-components=1 -C /usr/local/bin/
-ll /usr/local/bin/
-
+curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
 
 
 touch /etc/etcd.env
 echo "PEER_NAME=${PEER_NAME}" >> /etc/etcd.env
 echo "PRIVATE_IP=${PRIVATE_IP}" >> /etc/etcd.env
-cat /etc/etcd.env
 
 
 
-#systemd unit file 생성
-----------------------------------------------------------------------------
+
+======================= 1번서버
+
+
 cat >/etc/systemd/system/etcd.service <<EOF
 [Unit]
 Description=etcd
@@ -265,36 +278,377 @@ RestartSec=5s
 LimitNOFILE=40000
 TimeoutStartSec=0
 
-ExecStart=/usr/local/bin/etcd --name t1vkubeetcd1 --data-dir /var/lib/etcd --listen-client-urls http://localhost:2379 --advertise-client-urls http://localhost:2379 --listen-peer-urls http://localhost:2380 --initial-advertise-peer-urls http://t1vkubeetcd1:2380 --cert-file=/etc/kubernetes/pki/etcd/server.pem --key-file=/etc/kubernetes/pki/etcd/server-key.pem --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --initial-cluster t1vkubeetcd1=https://10.10.64.96:2380,t1vkubeetcd2=https://10.10.64.97:2380,t1vkubeetcd3=https://10.10.64.98:2380 --initial-cluster-token my-etcd-token --initial-cluster-state new
+ExecStart=/usr/local/bin/etcd --name t1vkubeetcd1 --data-dir /var/lib/etcd --listen-client-urls https://t1vkubeetcd1:2379 --advertise-client-urls https://t1vkubeetcd1:2379 --listen-peer-urls https://t1vkubeetcd1:2380 --initial-advertise-peer-urls https://t1vkubeetcd1:2380 --cert-file=/etc/kubernetes/pki/etcd/server.pem --key-file=/etc/kubernetes/pki/etcd/server-key.pem --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --initial-cluster t1vkubeetcd1=https://10.10.64.96:2380,t1vkubeetcd2=https://10.10.64.97:2380,t1vkubeetcd3=https://10.10.64.98:2380 --initial-cluster-token my-etcd-token --initial-cluster-state new
 
 [Install]
 WantedBy=multi-user.target
-EOF
-----------------------------------------------------------------------------
-
- 
-clear
-cat /etc/systemd/system/etcd.service
-
-
-cat <<EOF >> /etc/hosts
-10.10.64.96  etcd0 t1vkubeetcd1
-10.10.64.97  etcd1 t1vkubeetcd2
-10.10.64.98  etcd2 t1vkubeetcd3
 EOF
 
 
 
 systemctl daemon-reload
-
 systemctl stop etcd
 systemctl start etcd
 
 systemctl status etcd
 
 
+
+======================= 2번서버
+
+
+
+
+cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name t1vkubeetcd2 --data-dir /var/lib/etcd --listen-client-urls https://t1vkubeetcd2:2379 --advertise-client-urls https://t1vkubeetcd2:2379 --listen-peer-urls https://t1vkubeetcd2:2380 --initial-advertise-peer-urls https://t1vkubeetcd2:2380 --cert-file=/etc/kubernetes/pki/etcd/server.pem --key-file=/etc/kubernetes/pki/etcd/server-key.pem --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --initial-cluster t1vkubeetcd1=https://10.10.64.96:2380,t1vkubeetcd2=https://10.10.64.97:2380,t1vkubeetcd3=https://10.10.64.98:2380 --initial-cluster-token my-etcd-token --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+
+systemctl daemon-reload
+systemctl stop etcd
+systemctl start etcd
+
+systemctl status etcd
+
+================================= 3번서버
+
+cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name t1vkubeetcd3 --data-dir /var/lib/etcd --listen-client-urls https://t1vkubeetcd3:2379 --advertise-client-urls https://t1vkubeetcd3:2379 --listen-peer-urls https://t1vkubeetcd3:2380 --initial-advertise-peer-urls https://t1vkubeetcd3:2380 --cert-file=/etc/kubernetes/pki/etcd/server.pem --key-file=/etc/kubernetes/pki/etcd/server-key.pem --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --initial-cluster t1vkubeetcd1=https://10.10.64.96:2380,t1vkubeetcd2=https://10.10.64.97:2380,t1vkubeetcd3=https://10.10.64.98:2380 --initial-cluster-token my-etcd-token --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+
+systemctl daemon-reload
+systemctl stop etcd
+systemctl start etcd
+
+systemctl status etcd
+
+####################################################################################
+####################################################################################
+master서버 로드밸런싱 설정 => nginx 사용해서 6443 로드밸런싱 추천
+####################################################################################
+####################################################################################
+
+#MASTER 3대 모두
+
+yum install -y keepalived
+
+cd /etc/keepalived
+bk keepalived.conf 
+
+
+#로드밸런싱설정(First Master)
+cat << EOF > /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {
+ router_id LVS_DEVEL
+}
+
+vrrp_script check_apiserver {
+ script "/etc/keepalived/check_apiserver.sh"
+ interval 3
+ weight -2
+ fall 10
+ rise 2
+}
+
+vrrp_instance VI_1 {
+   state MASTER
+   interface eth0
+   virtual_router_id 51
+   priority 101
+   authentication {
+       auth_type PASS
+       auth_pass 4be37dc3b4c90194d1600c483e10ad1d
+   }
+   virtual_ipaddress {
+       10.10.64.60
+   }
+   track_script {
+       check_apiserver
+   }
+}
+EOF
+
+
+#로드밸런싱설정(Other Masters)
+vi /etc/keepalived/keepalived.conf 
+---------------------------------------------------------
+! Configuration File for keepalived
+global_defs {
+ router_id LVS_DEVEL
+}
+
+vrrp_script check_apiserver {
+ script "/etc/keepalived/check_apiserver.sh"
+ interval 3
+ weight -2
+ fall 10
+ rise 2
+}
+
+vrrp_instance VI_1 {
+   state BACKUP
+   interface eth0
+   virtual_router_id 51
+   priority 100
+   authentication {
+       auth_type PASS
+       auth_pass 4be37dc3b4c90194d1600c483e10ad1d
+   }
+   virtual_ipaddress {
+       10.10.64.60
+   }
+   track_script {
+       check_apiserver
+   }
+}
+---------------------------------------------------------
+
+
+
+#공통
+vi /etc/keepalived/check_apiserver.sh
+--------------------------------------------------
+#!/bin/sh
+
+errorExit() {
+   echo "*** $*" 1>&2
+   exit 1
+}
+
+curl --silent --max-time 2 --insecure https://localhost:6443/ -o /dev/null || errorExit "Error GET https://localhost:6443/"
+if ip addr | grep -q 10.10.64.60; then
+   curl --silent --max-time 2 --insecure https://10.10.64.60:6443/ -o /dev/null || errorExit "Error GET https://10.10.64.60:6443/"
+fi
+--------------------------------------------------
+
+chmod 755  /etc/keepalived/check_apiserver.sh
+
+
+systemctl enable keepalived
+systemctl stop keepalived
+systemctl start keepalived
+systemctl status keepalived
+
+
+
+##########################################
+##########################################
+Run kubeadm init on master0
+##########################################
+##########################################
+
+#MASTER서버 3대 모두
+
+systemctl stop firewalld
+systemctl disable firewalld
+
+cat <<EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
+EOF
+
+export PEER_NAME=$(hostname)
+export PRIVATE_IP=$(ip addr show eth0 | grep -Po 'inet \K[\d.]+')
+
+echo $PEER_NAME
+echo $PRIVATE_IP
+
+ssh-keygen -t rsa -b 4096 -C "sanghyun.park@homeplus.co.kr"
+
+cat ~/.ssh/id_rsa.pub
+
+#etcd0서버의 authorized_keys에 master서버 3대의 puliic 을 넣어준다
+cd ~/.ssh
+bk authorized_keys
+vi ~/.ssh/authorized_keys
+
+ 
  
 
+#MASTER서버 3대 모두
+master서버로 이동
+mkdir -p /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki/etcd
+ll /etc/kubernetes/pki/etcd
+
+
+#MASTER 1번 서버
+
+cd ~
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 10.10.64.60
+  controlPlaneEndpoint: 10.10.64.60
+etcd:
+  endpoints:
+  - https://10.10.64.96:2379
+  - https://10.10.64.97:2379
+  - https://10.10.64.98:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 192.168.0.0/16
+apiServerCertSANs:
+- 10.10.64.60
+- 10.10.64.61
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+kubeadm init --config=config.yaml
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+##########################################
+Run kubeadm init on master1 and master2
+##########################################
+
+#master1번 서버에 master2와 master3 public 넣어준다
+
+#master1
+vi ~/.ssh/authorized_keys
+
+#master2 & 3 public
+cat ~/.ssh/id_rsa.pub
+
+#master2와 3번
+scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
+
+rm /etc/kubernetes/pki/apiserver*
+
+
+#MASTER 2번 서버
+
+cd ~
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 10.10.64.60
+  controlPlaneEndpoint: 10.10.64.60
+etcd:
+  endpoints:
+  - https://10.10.64.96:2379
+  - https://10.10.64.97:2379
+  - https://10.10.64.98:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 192.168.0.0/16
+apiServerCertSANs:
+- 10.10.64.60
+- 10.10.64.62
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+kubeadm init --config=config.yaml
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
+
+
+#MASTER 3번 서버
+
+cd ~
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 10.10.64.60
+  controlPlaneEndpoint: 10.10.64.60
+etcd:
+  endpoints:
+  - https://10.10.64.96:2379
+  - https://10.10.64.97:2379
+  - https://10.10.64.98:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 192.168.0.0/16
+apiServerCertSANs:
+- 10.10.64.60
+- 10.10.64.63
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+kubeadm init --config=config.yaml
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
+##################################
+Install CNI network
+##################################
+#master1번 서버에서만 실행
+
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+
+
+##################################
+##################################
+Install workers
+##################################
+##################################
 
 
 
