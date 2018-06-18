@@ -11,26 +11,29 @@ cat <<EOF >> /root/.bashrc
 export LS_COLORS="di=00;36:fi=00;37"
 EOF
 
+cd /sbin
+vi bk
+------------------------------------------------------------
+#CP.ALL.ENABLE
+
+for i in $*
+do
+        if [ -f $i ]
+        then
+                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
+        else
+                echo "`basename $0` <filenames>"
+        fi
+done
+------------------------------------------------------------
+
 yum install -y net-tools
 
-###JAVA설치
-
-yum install -y wget
-cd /opt/
-
-wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz"
-
-tar xzf jdk-8u131-linux-x64.tar.gz
-cd /opt/jdk1.8.0_131/
-alternatives --install /usr/bin/java java /opt/jdk1.8.0_131/bin/java 2
-
-alternatives --config java
-
-cat << EOF >> /root/.bash_profile
-export JAVA_HOME=/opt/jdk1.8.0_131
-export JRE_HOME=/opt/jdk1.8.0_131/jre
-export PATH=$PATH:/opt/jdk1.8.0_131/bin:/opt/jdk1.8.0_131/jre/bin
-EOF
+############################################
+############################################
+Installing prerequisites on masters
+############################################
+############################################
 
 ###FIREWALL
 #포트 상세 정보 : https://kubernetes.io/docs/tasks/tools/install-kubeadm/#before-you-begin
@@ -52,9 +55,8 @@ firewall-cmd --list-ports
 ###Installing Docker
 yum install -y docker
 
-vi /etc/sysconfig/docker-storage
-DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper"
-
+#vi /etc/sysconfig/docker-storage
+#DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper"
 
 systemctl enable docker && systemctl start docker
 systemctl status docker
@@ -76,6 +78,10 @@ yum install -y kubelet kubeadm kubectl
 
 systemctl enable kubelet && systemctl start kubelet
 
+systemctl status kubelet
+
+
+
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -93,71 +99,74 @@ cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 systemctl daemon-reload
 systemctl restart kubelet
 
-
+############################################
 ###########################################
 Setting up an HA etcd cluster
 ###########################################
+############################################
 
 ###Create etcd CA certs
-
-1.Install cfssl and cfssljson on all etcd nodes:
+##1.Install cfssl and cfssljson on all etcd nodes:
+##etcd서버 설치
 curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
 curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
 chmod +x /usr/local/bin/cfssl*
 
-2.SSH into etcd0 and run the following:
+##2.SSH into etcd0 and run the following:
 
 mkdir -p /etc/kubernetes/pki/etcd
 cd /etc/kubernetes/pki/etcd
 
-cat >ca-config.json <<EOF
- {
-    "signing": {
-        "default": {
-            "expiry": "43800h"
-        },
-        "profiles": {
-            "server": {
-                "expiry": "43800h",
-                "usages": [
-                    "signing",
-                    "key encipherment",
-                    "server auth",
-                    "client auth"
-                ]
-            },
-            "client": {
-                "expiry": "43800h",
-                "usages": [
-                    "signing",
-                    "key encipherment",
-                    "client auth"
-                ]
-            },
-            "peer": {
-                "expiry": "43800h",
-                "usages": [
-                    "signing",
-                    "key encipherment",
-                    "server auth",
-                    "client auth"
-                ]
-            }
-        }
-    }
- }
- EOF
- cat >ca-csr.json <<EOF
- {
-    "CN": "etcd",
-    "key": {
-        "algo": "rsa",
-        "size": 2048
-    }
- }
- EOF
  
-3.Next, generate the CA certs:
+cat >ca-config.json <<EOF
+{
+   "signing": {
+      
+       "default": {
+           "expiry": "43800h"
+       },
+       "profiles": {
+           "server": {
+               "expiry": "43800h",
+               "usages": [
+                   "signing",
+                   "key encipherment",
+                   "server auth",
+                   "client auth"
+               ]
+           },
+           "client": {
+               "expiry": "43800h",
+               "usages": [
+                   "signing",
+                   "key encipherment",
+                   "client auth"
+               ]
+           },
+           "peer": {
+               "expiry": "43800h",
+               "usages": [
+                   "signing",
+                   "key encipherment",
+                   "server auth",
+                   "client auth"
+               ]
+           }
+       }
+   }
+}
+EOF
+cat >ca-csr.json <<EOF
+{
+   "CN": "etcd",
+   "key": {
+       "algo": "rsa",
+       "size": 2048
+   }
+}
+EOF
+ 
+##3.Next, generate the CA certs:
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
 
 ###Generate etcd client certs
@@ -173,6 +182,125 @@ cat >client.json <<EOF
 EOF
 
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
+
+
+##Create SSH access
+
+export PEER_NAME=$(hostname)
+export PRIVATE_IP=$(ip addr show eth0 | grep -Po 'inet \K[\d.]+')
+
+echo $PEER_NAME
+echo $PRIVATE_IP
+
+ssh-keygen -t rsa -b 4096 -C "sanghyun.park@homeplus.co.kr"
+
+cd /root/.ssh
+ll
+
+cat ~/.ssh/id_rsa.pub
+
+
+vi /root/.ssh/authorized_keys
+cat /root/.ssh/authorized_keys
+
+
+##etcd2번, 3번서버
+mkdir -p /etc/kubernetes/pki/etcd
+cd /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem .
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca-key.pem .
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem .
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem .
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca-config.json .
+
+##etcd 모든 서버
+cd /etc/kubernetes/pki/etcd
+cfssl print-defaults csr > config.json
+sed -i '0,/CN/{s/example\.net/'"$PEER_NAME"'/}' config.json
+sed -i 's/www\.example\.net/'"$PRIVATE_IP"'/' config.json
+sed -i 's/example\.net/'"$PEER_NAME"'/' config.json
+clear
+cat config.json
+
+
+cd /etc/kubernetes/pki/etcd
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server config.json | cfssljson -bare server
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer config.json | cfssljson -bare peer
+
+##First insatll etcd
+yum install -y curl gzip wget
+
+ETCD_VERSION="v3.1.12" curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
+
+또는
+cd ~
+ETCD_VERSION="v3.1.12" 
+wget https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz 
+tar -xzv -f /root/etcd-v3.1.12-linux-amd64.tar.gz  --strip-components=1 -C /usr/local/bin/
+ll /usr/local/bin/
+
+
+
+touch /etc/etcd.env
+echo "PEER_NAME=${PEER_NAME}" >> /etc/etcd.env
+echo "PRIVATE_IP=${PRIVATE_IP}" >> /etc/etcd.env
+cat /etc/etcd.env
+
+
+
+#systemd unit file 생성
+----------------------------------------------------------------------------
+cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name t1vkubeetcd1 --data-dir /var/lib/etcd --listen-client-urls http://localhost:2379 --advertise-client-urls http://localhost:2379 --listen-peer-urls http://localhost:2380 --initial-advertise-peer-urls http://t1vkubeetcd1:2380 --cert-file=/etc/kubernetes/pki/etcd/server.pem --key-file=/etc/kubernetes/pki/etcd/server-key.pem --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem --initial-cluster t1vkubeetcd1=https://10.10.64.96:2380,t1vkubeetcd2=https://10.10.64.97:2380,t1vkubeetcd3=https://10.10.64.98:2380 --initial-cluster-token my-etcd-token --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+----------------------------------------------------------------------------
+
+ 
+clear
+cat /etc/systemd/system/etcd.service
+
+
+cat <<EOF >> /etc/hosts
+10.10.64.96  etcd0 t1vkubeetcd1
+10.10.64.97  etcd1 t1vkubeetcd2
+10.10.64.98  etcd2 t1vkubeetcd3
+EOF
+
+
+
+systemctl daemon-reload
+
+systemctl stop etcd
+systemctl start etcd
+
+systemctl status etcd
+
+
+ 
+
+
+
+
+
+
+
 
 
 
