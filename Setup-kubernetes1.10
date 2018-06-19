@@ -1,4 +1,12 @@
 
+#############
+NOTE!!
+#############
+
+1.마스터서버 리붓 또는 복원이후 재시도 시 setenforce 0 
+2.DNS POD 서비시 기동위한 yum install -y ebtables ethtool
+
+
 ###########################################
 기본
 ###########################################
@@ -10,6 +18,8 @@ Centos7, 2코어, 2GB메모리 3대
 cat <<EOF >> /root/.bashrc
 export LS_COLORS="di=00;36:fi=00;37"
 EOF
+
+vi /etc/fstab
 
 cd /sbin
 vi bk
@@ -73,9 +83,14 @@ repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
 setenforce 0
+
+
+
 yum install -y kubelet kubeadm kubectl
 systemctl enable kubelet && systemctl start kubelet
 systemctl status kubelet
+
+
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
@@ -100,6 +115,12 @@ Setting up an HA etcd cluster
 ############################################
 
 ##etcd서버 3대  
+
+systemctl disable firewalld
+systemctl stop firewalld
+
+vi /etc/fstab
+
 
 cat <<EOF >> /etc/hosts
 10.10.64.96  t1vkubeetcd1
@@ -237,10 +258,10 @@ echo "PRIVATE_IP=${PRIVATE_IP}" >> /etc/etcd.env
 
 
 
-
+#서버 3대 모두 서비스 기동
+#3대 중 2대는 기동되어야 running
 
 ======================= 1번서버 etcd 기동
-====> 서버 3대 중 2대는 기동되어야 서비스 RUNNING
 
 cat >/etc/systemd/system/etcd.service <<EOF
 [Unit]
@@ -265,6 +286,7 @@ EOF
 
 systemctl daemon-reload
 systemctl stop etcd
+systemctl enable etcd
 systemctl start etcd
 
 systemctl status etcd
@@ -297,6 +319,7 @@ EOF
 
 systemctl daemon-reload
 systemctl stop etcd
+systemctl enable etcd
 systemctl start etcd
 
 systemctl status etcd
@@ -326,6 +349,7 @@ EOF
 
 systemctl daemon-reload
 systemctl stop etcd
+systemctl enable etcd
 systemctl start etcd
 
 systemctl status etcd
@@ -346,7 +370,7 @@ cd /etc/keepalived
 bk keepalived.conf 
 
 
-#로드밸런싱설정(3대 모두)
+#로드밸런싱설정(master1)
 cat << EOF > /etc/keepalived/keepalived.conf 
 ! Configuration File for keepalived
 global_defs {
@@ -362,10 +386,10 @@ vrrp_script check_apiserver {
 }
 
 vrrp_instance VI_1 {
-   state MASTER
+   state MASTER  
    interface eth0
    virtual_router_id 51
-   priority 101
+   priority 101   
    authentication {
        auth_type PASS
        auth_pass 4be37dc3b4c90194d1600c483e10ad1d
@@ -379,9 +403,72 @@ vrrp_instance VI_1 {
 }
 EOF
 
+#로드밸런싱설정(master2)
+cat << EOF > /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {
+ router_id LVS_DEVEL
+}
 
-#로드밸런싱 우선순위 설정 (priority 값이 낮으면 우선순위가 낮음. 각 서버 차등 부여)
-vi /etc/keepalived/keepalived.conf 
+vrrp_script check_apiserver {
+ script "/etc/keepalived/check_apiserver.sh"
+ interval 3
+ weight -2
+ fall 10
+ rise 2
+}
+
+vrrp_instance VI_1 {
+   state BACKUP  
+   interface eth0
+   virtual_router_id 51
+   priority 100   
+   authentication {
+       auth_type PASS
+       auth_pass 4be37dc3b4c90194d1600c483e10ad1d
+   }
+   virtual_ipaddress {
+       10.10.64.60
+   }
+   track_script {
+       check_apiserver
+   }
+}
+EOF
+
+#로드밸런싱설정(master3)
+cat << EOF > /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {
+ router_id LVS_DEVEL
+}
+
+vrrp_script check_apiserver {
+ script "/etc/keepalived/check_apiserver.sh"
+ interval 3
+ weight -2
+ fall 10
+ rise 2
+}
+
+vrrp_instance VI_1 {
+   state BACKUP  
+   interface eth0
+   virtual_router_id 51
+   priority 99   
+   authentication {
+       auth_type PASS
+       auth_pass 4be37dc3b4c90194d1600c483e10ad1d
+   }
+   virtual_ipaddress {
+       10.10.64.60
+   }
+   track_script {
+       check_apiserver
+   }
+}
+EOF
+
 
 
 #공통
@@ -399,8 +486,8 @@ if ip addr | grep -q 10.10.64.60; then
    curl --silent --max-time 2 --insecure https://10.10.64.60:6443/ -o /dev/null || errorExit "Error GET https://10.10.64.60:6443/"
 fi
 --------------------------------------------------
-
 chmod 755  /etc/keepalived/check_apiserver.sh
+
 
 
 systemctl enable keepalived
@@ -423,11 +510,65 @@ cat <<EOF >> /etc/hosts
 10.10.64.63  t1vkubeadm3
 EOF
 
+
+yum info haproxy
+
+yum install wget gcc pcre-static pcre-devel -y
+ 
+wget http://www.haproxy.org/download/1.6/src/haproxy-1.6.3.tar.gz -O ~/haproxy.tar.gz
+
+tar xzvf ~/haproxy.tar.gz -C ~/
+
+cd ~/haproxy-1.6.3
+
+make TARGET=linux2628
+
+sudo make install
+
+sudo cp /usr/local/sbin/haproxy /usr/sbin/
+sudo cp ~/haproxy-1.6.3/examples/haproxy.init /etc/init.d/haproxy
+sudo chmod 755 /etc/init.d/haproxy
+
+
+sudo mkdir -p /etc/haproxy
+sudo mkdir -p /run/haproxy
+sudo mkdir -p /var/lib/haproxy
+sudo touch /var/lib/haproxy/stats
+
+sudo useradd -r haproxy
+
+sudo haproxy –v
+
+sudo firewall-cmd --permanent --zone=public --add-service=http
+sudo firewall-cmd --permanent --zone=public --add-port=30000-32727/tcp
+sudo firewall-cmd --reload
+
+
+
 vi /etc/haproxy/haproxy.cfg
 -------------------------------------------------
+global
+   log /dev/log local0
+   log /dev/log local1 notice
+   chroot /var/lib/haproxy
+   stats socket /run/haproxy/admin.sock mode 660 level admin
+   stats timeout 30s
+   user haproxy
+   group haproxy
+   daemon
+
+defaults
+   log global
+   mode http
+   option httplog
+   option dontlognull
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+
 frontend k8s-api
-  bind 10.10.64.60:443
-  bind 127.0.0.1:443
+  bind 10.10.64.60:6443
+  bind 127.0.0.1:6443
   mode tcp
   option tcplog
   default_backend k8s-api
@@ -438,12 +579,15 @@ backend k8s-api
   option tcp-check
   balance roundrobin
   default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
-  server t1vkubeadm1 10.10.64.61:6443 check
-  server t1vkubeadm2 10.10.64.62:6443 check
-  server t1vkubeadm3 10.10.64.63:6443 check
+  server t1vkubeadm1 10.10.64.61:6443 check fall 3 rise 2
+  server t1vkubeadm2 10.10.64.62:6443 check fall 3 rise 2
+  server t1vkubeadm3 10.10.64.63:6443 check fall 3 rise 2
 -------------------------------------------------
-  
-  
+
+systemctl enable haproxy.service
+systemctl restart haproxy.service
+systemctl status haproxy.service
+
 
 ##########################################
 ##########################################
@@ -485,8 +629,19 @@ scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etc
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki/etcd
 ll /etc/kubernetes/pki/etcd
 
+yum install -y ebtables ethtool
+
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+#중요 복원 후 재시도할 떄 setenforce 0 이후 할 것
+setenforce 0
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
 
 #MASTER 1번 서버 init
+#1번 마스터 올라오면,,,,,,, CNI설치한 후에 나머지 마스터 init할 것
+
 
 cd ~
 cat >config.yaml <<EOF
@@ -512,6 +667,14 @@ apiServerExtraArgs:
   apiserver-count: "3"
 EOF
 
+systemctl stop kubelet
+systemctl stop docker
+systemctl start docker
+systemctl start kubelet
+
+systemctl status docker
+systemctl status kubelet
+
 kubeadm init --config=config.yaml
 
 mkdir -p $HOME/.kube
@@ -523,12 +686,13 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 Run kubeadm init on master1 and master2
 ##########################################
 
-#master1번 서버에 master2와 master3 public 넣어준다
-#master1
-vi ~/.ssh/authorized_keys
-
 #master2 & 3 public
 cat ~/.ssh/id_rsa.pub
+
+#master1번 서버에 master2와 master3 public 넣어준다
+vi ~/.ssh/authorized_keys
+
+ 
 
 #master2와 3번 서버에 1번서버의 pki들을 가져간다
 scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
@@ -566,9 +730,6 @@ kubeadm init --config=config.yaml
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-
-
 
 
 #MASTER 3번 서버
@@ -620,6 +781,8 @@ systemctl start kubelet
 scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
 rm -f /etc/kubernetes/pki/apiserver*
 
+
+
 mkdir -p /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
@@ -630,10 +793,7 @@ ll /etc/kubernetes/pki/etcd
 
 kubectl get nodes
 
-#master서버 3대 순차 재부팅
-
-
-
+#마스터서버는 CNI 설치 전에 리붓하지 말 것
 
 ##################################
 Install CNI network
@@ -642,6 +802,9 @@ Install CNI network
 
 kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
 kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+
+kubectl get pods --namespace=kube-system
 
 
 
@@ -655,7 +818,17 @@ MASTER서버와 동일하게, 도커설치하고 kubelet, kubeadm, kube 등 설�
 
 systemctl daemon-reload
 systemctl restart kubelet
+systemctl status kubelet
 
+cat <<EOF >> /etc/hosts
+10.10.64.61  t1vkubemaster1
+10.10.64.62  t1vkubemaster2
+10.10.64.63  t1vkubemaster3
+
+10.10.64.64  t1vkubework1
+10.10.64.65  t1vkubework2
+10.10.64.66  t1vkubework3
+EOF
 
 
 
