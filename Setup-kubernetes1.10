@@ -108,6 +108,7 @@ cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 systemctl daemon-reload
 systemctl restart kubelet
 
+
 ############################################
 ###########################################
 Setting up an HA etcd cluster
@@ -356,9 +357,7 @@ systemctl status etcd
 
 ####################################################################################
 ####################################################################################
-master서버 로드밸런싱 설정 => nginx 사용해서 6443 로드밸런싱 추천
-@@@@@@@@@@@ 이 것을 미리 설정해두면 1대에 2개의 ip가 할당되고,,,,, private 환경변수에 따른 셋팅에 문제가됨
-@@@@@@@@@@@ 즉 haproxy로 셋팅해야 함
+master서버 로드밸런싱 설정 
 ####################################################################################
 ####################################################################################
 
@@ -436,6 +435,7 @@ vrrp_instance VI_1 {
 }
 EOF
 
+
 #로드밸런싱설정(master3)
 cat << EOF > /etc/keepalived/keepalived.conf 
 ! Configuration File for keepalived
@@ -498,7 +498,7 @@ systemctl status keepalived
 
 ##########################################
 ##########################################
-haproxy 
+haproxy  => 실패,,,,,
 ##########################################
 ##########################################
 
@@ -597,6 +597,9 @@ Run kubeadm init on master0
 
 #MASTER서버 3대 모두
 
+yum install -y ebtables ethtool
+
+
 systemctl stop firewalld
 systemctl disable firewalld
 
@@ -628,20 +631,14 @@ scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki/etcd
 ll /etc/kubernetes/pki/etcd
-
-yum install -y ebtables ethtool
-
-
+ 
 
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 #중요 복원 후 재시도할 떄 setenforce 0 이후 할 것
-setenforce 0
 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
 
 #MASTER 1번 서버 init
 #1번 마스터 올라오면,,,,,,, CNI설치한 후에 나머지 마스터 init할 것
-
 
 cd ~
 cat >config.yaml <<EOF
@@ -667,19 +664,28 @@ apiServerExtraArgs:
   apiserver-count: "3"
 EOF
 
-systemctl stop kubelet
-systemctl stop docker
-systemctl start docker
-systemctl start kubelet
-
-systemctl status docker
-systemctl status kubelet
-
 kubeadm init --config=config.yaml
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get nodes
+kubectl get pods --namespace=kube-system
+
+#DNS 컨테이너를 제외한 나머지가 RUNNING이면 CNI 설치함 (CNI 설치하기 전에는 PENDING 상태임)
+
+##################################
+Install CNI network
+##################################
+#master1번 서버에서만 실행
+
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+kubectl get pods --namespace=kube-system
+
+#모두 running 된 것 확인 후 나머지 master와 worker 진행
 
 
 ##########################################
@@ -691,8 +697,6 @@ cat ~/.ssh/id_rsa.pub
 
 #master1번 서버에 master2와 master3 public 넣어준다
 vi ~/.ssh/authorized_keys
-
- 
 
 #master2와 3번 서버에 1번서버의 pki들을 가져간다
 scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
@@ -730,6 +734,10 @@ kubeadm init --config=config.yaml
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get pods --namespace=kube-system
+
+
 
 
 #MASTER 3번 서버
@@ -791,20 +799,6 @@ ll /etc/kubernetes/pki/etcd
 
 #### #### ######## #### ####
 
-kubectl get nodes
-
-#마스터서버는 CNI 설치 전에 리붓하지 말 것
-
-##################################
-Install CNI network
-##################################
-#master1번 서버에서만 실행
-
-kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
-kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
-
-
-kubectl get pods --namespace=kube-system
 
 
 
@@ -831,6 +825,20 @@ cat <<EOF >> /etc/hosts
 EOF
 
 
+setenforce 0
+
+cat <<EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+sysctl net.bridge.bridge-nf-call-iptables=1
+
+kubeadm join ~~~~~~~~~~~~~~~~~~~~~~~
+
+#모두 running 확인 후 진행
+kubectl get pods --namespace=kube-system
+kubectl get nodes
 
 
 
