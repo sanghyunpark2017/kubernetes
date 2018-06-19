@@ -3,3 +3,10 @@
 ##############
 
 kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
+
+
+kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+kubectl delete service kubernetes-dashboard-nodeport --namespace=kube-system
+
+
