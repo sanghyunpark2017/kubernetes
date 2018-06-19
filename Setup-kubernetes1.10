@@ -1,6 +1,6 @@
 
 ###########################################
-master서버 3대빌드
+기본
 ###########################################
 
 ###서버스펙
@@ -29,11 +29,11 @@ done
 
 yum install -y net-tools
 
-############################################
-############################################
-Installing prerequisites on masters
-############################################
-############################################
+######################################################################
+#########################################################
+Installing prerequisites on masters and workers
+#########################################################
+#########################################################
 
 ###FIREWALL
 #포트 상세 정보 : https://kubernetes.io/docs/tasks/tools/install-kubeadm/#before-you-begin
@@ -52,11 +52,12 @@ firewall-cmd --reload
 
 firewall-cmd --list-ports
 
+#방화벽 일단 셧다운
+systemctl disable firewalld
+systemctl stop firewalld
+
 ###Installing Docker
 yum install -y docker
-
-#vi /etc/sysconfig/docker-storage
-#DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper"
 
 systemctl enable docker && systemctl start docker
 systemctl status docker
@@ -71,23 +72,16 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
-
 setenforce 0
-
 yum install -y kubelet kubeadm kubectl
-
 systemctl enable kubelet && systemctl start kubelet
-
 systemctl status kubelet
-
-
-
-
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
+
 
 ###Configure cgroup driver used by kubelet on Master Node
 docker info | grep -i cgroup
@@ -114,14 +108,9 @@ cat <<EOF >> /etc/hosts
 EOF
 
 yum install -y net-tools curl 
-
-
 curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
 curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
 chmod +x /usr/local/bin/cfssl*
- 
-
-
 
 mkdir -p /etc/kubernetes/pki/etcd
 cd /etc/kubernetes/pki/etcd
@@ -164,9 +153,6 @@ cat >ca-config.json <<EOF
 }
 EOF
 
-
-
-
 cat >ca-csr.json <<EOF
 {
     "hosts": [
@@ -193,9 +179,6 @@ EOF
 
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
 
-
-
-
 cat >client.json <<EOF
 {
   "CN": "client",
@@ -207,9 +190,7 @@ cat >client.json <<EOF
 EOF
 
 
-
 #Generate etcd client certs
-
 
 cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
 
@@ -223,11 +204,8 @@ ssh-keygen -t rsa -b 4096 -C "sanghyun.park@homeplus.co.kr"
 #2번과 3번서버에 public key 화면표시
 cat ~/.ssh/id_rsa.pub
 
-
 #1번 서버 authorized_keys에 2번서버,3번서버의 public key 넣어줌
-
 vi ~/.ssh/authorized_keys
-
 
 #2번과 3번서버에 1번서버의 root CA를 넣어줌
 mkdir -p /etc/kubernetes/pki/etcd
@@ -260,8 +238,9 @@ echo "PRIVATE_IP=${PRIVATE_IP}" >> /etc/etcd.env
 
 
 
-======================= 1번서버
 
+======================= 1번서버 etcd 기동
+====> 서버 3대 중 2대는 기동되어야 서비스 RUNNING
 
 cat >/etc/systemd/system/etcd.service <<EOF
 [Unit]
@@ -284,8 +263,6 @@ ExecStart=/usr/local/bin/etcd --name t1vkubeetcd1 --data-dir /var/lib/etcd --lis
 WantedBy=multi-user.target
 EOF
 
-
-
 systemctl daemon-reload
 systemctl stop etcd
 systemctl start etcd
@@ -293,10 +270,7 @@ systemctl start etcd
 systemctl status etcd
 
 
-
-======================= 2번서버
-
-
+======================= 2번서버 etcd 기동
 
 
 cat >/etc/systemd/system/etcd.service <<EOF
@@ -321,14 +295,13 @@ WantedBy=multi-user.target
 EOF
 
 
-
 systemctl daemon-reload
 systemctl stop etcd
 systemctl start etcd
 
 systemctl status etcd
 
-================================= 3번서버
+================================= 3번서버 etcd 기동
 
 cat >/etc/systemd/system/etcd.service <<EOF
 [Unit]
@@ -351,8 +324,6 @@ ExecStart=/usr/local/bin/etcd --name t1vkubeetcd3 --data-dir /var/lib/etcd --lis
 WantedBy=multi-user.target
 EOF
 
-
-
 systemctl daemon-reload
 systemctl stop etcd
 systemctl start etcd
@@ -362,6 +333,8 @@ systemctl status etcd
 ####################################################################################
 ####################################################################################
 master서버 로드밸런싱 설정 => nginx 사용해서 6443 로드밸런싱 추천
+@@@@@@@@@@@ 이 것을 미리 설정해두면 1대에 2개의 ip가 할당되고,,,,, private 환경변수에 따른 셋팅에 문제가됨
+@@@@@@@@@@@ 즉 haproxy로 셋팅해야 함
 ####################################################################################
 ####################################################################################
 
@@ -373,7 +346,7 @@ cd /etc/keepalived
 bk keepalived.conf 
 
 
-#로드밸런싱설정(First Master)
+#로드밸런싱설정(3대 모두)
 cat << EOF > /etc/keepalived/keepalived.conf 
 ! Configuration File for keepalived
 global_defs {
@@ -407,40 +380,8 @@ vrrp_instance VI_1 {
 EOF
 
 
-#로드밸런싱설정(Other Masters)
+#로드밸런싱 우선순위 설정 (priority 값이 낮으면 우선순위가 낮음. 각 서버 차등 부여)
 vi /etc/keepalived/keepalived.conf 
----------------------------------------------------------
-! Configuration File for keepalived
-global_defs {
- router_id LVS_DEVEL
-}
-
-vrrp_script check_apiserver {
- script "/etc/keepalived/check_apiserver.sh"
- interval 3
- weight -2
- fall 10
- rise 2
-}
-
-vrrp_instance VI_1 {
-   state BACKUP
-   interface eth0
-   virtual_router_id 51
-   priority 100
-   authentication {
-       auth_type PASS
-       auth_pass 4be37dc3b4c90194d1600c483e10ad1d
-   }
-   virtual_ipaddress {
-       10.10.64.60
-   }
-   track_script {
-       check_apiserver
-   }
-}
----------------------------------------------------------
-
 
 
 #공통
@@ -468,6 +409,41 @@ systemctl start keepalived
 systemctl status keepalived
 
 
+##########################################
+##########################################
+haproxy 
+##########################################
+##########################################
+
+yum install -y net-tools
+
+cat <<EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
+EOF
+
+vi /etc/haproxy/haproxy.cfg
+-------------------------------------------------
+frontend k8s-api
+  bind 10.10.64.60:443
+  bind 127.0.0.1:443
+  mode tcp
+  option tcplog
+  default_backend k8s-api
+
+backend k8s-api
+  mode tcp
+  option tcplog
+  option tcp-check
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+  server t1vkubeadm1 10.10.64.61:6443 check
+  server t1vkubeadm2 10.10.64.62:6443 check
+  server t1vkubeadm3 10.10.64.63:6443 check
+-------------------------------------------------
+  
+  
 
 ##########################################
 ##########################################
@@ -501,11 +477,8 @@ cd ~/.ssh
 bk authorized_keys
 vi ~/.ssh/authorized_keys
 
- 
- 
 
 #MASTER서버 3대 모두
-master서버로 이동
 mkdir -p /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
@@ -513,7 +486,7 @@ scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki
 ll /etc/kubernetes/pki/etcd
 
 
-#MASTER 1번 서버
+#MASTER 1번 서버 init
 
 cd ~
 cat >config.yaml <<EOF
@@ -551,20 +524,18 @@ Run kubeadm init on master1 and master2
 ##########################################
 
 #master1번 서버에 master2와 master3 public 넣어준다
-
 #master1
 vi ~/.ssh/authorized_keys
 
 #master2 & 3 public
 cat ~/.ssh/id_rsa.pub
 
-#master2와 3번
+#master2와 3번 서버에 1번서버의 pki들을 가져간다
 scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
+rm -f /etc/kubernetes/pki/apiserver*
 
-rm /etc/kubernetes/pki/apiserver*
 
-
-#MASTER 2번 서버
+#MASTER 2번 서버 init
 
 cd ~
 cat >config.yaml <<EOF
@@ -626,11 +597,41 @@ apiServerExtraArgs:
   apiserver-count: "3"
 EOF
 
+
 kubeadm init --config=config.yaml
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
+
+#### #### ######## #### ######## #### ######## #### ####
+
+kube클러스터 리셋 시
+
+systemctl stop kubelet
+systemctl stop docker
+systemctl start docker
+systemctl start kubelet
+
+#master2와 3번 서버에 1번서버의 pki들을 가져간다
+scp root@10.10.64.61:/etc/kubernetes/pki/* /etc/kubernetes/pki
+rm -f /etc/kubernetes/pki/apiserver*
+
+mkdir -p /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem /etc/kubernetes/pki/etcd
+ll /etc/kubernetes/pki/etcd
+
+#### #### ######## #### ####
+
+kubectl get nodes
+
+#master서버 3대 순차 재부팅
+
 
 
 
