@@ -2,11 +2,40 @@
 #대시보드
 ##############
 
-kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+##### Heapster, influxdb & grafana 설치
+
+#Heapster/Influxdb/Grafana Git 다운로드
+cd /root/k8s-addon
+git clone https://github.com/kubernetes/heapster.git
+cd ~/k8s-addon/heapster
+
+#Heapster/Influxdb/Grafana 설치
+kubectl create -f deploy/kube-config/influxdb
+kubectl create -f deploy/kube-config/rbac/heapster-rbac.yaml
+
+
+##### kubernetes-dashboard 설치
+
+mkdir -p /root/k8s-addon
+cd /root/k8s-addon
+git clone https://github.com/DragOnMe/kubernetes-mod-skydns-dashboard-mon.git
+
+cd /root/k8s-addon/kubernetes-mod-skydns-dashboard-mon
+
+kubectl create -f Dashboard/dashboard-controller.yaml
+kubectl create -f Dashboard/dashboard-service.yaml
+
 kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
 
+kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
 
-kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
-kubectl delete service kubernetes-dashboard-nodeport --namespace=kube-system
+kubectl get svc kubernetes-dashboard-nodeport -nkube-system
+>NAME      TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+>kubernetes-dashboard-nodeport   NodePort  10.100.186.246  <none>  9090:32027/TCP  1m
+
+Dashboard 접속
+http://10.10.xx.xx:32027
+
+
 
 
