@@ -1,1 +1,162 @@
 
+
+#################################
+Installing HAProxy on Centos7
+2017/08/26
+#################################
+https://www.dreamvps.com/tutorials/installing-haproxy-http-load-balancer-on-centos/
+
+sudo yum info haproxy
+sudo yum wget install gcc pcre-static pcre-devel -y
+
+wget https://www.haproxy.org/download/1.7/src/haproxy-1.7.8.tar.gz -O ~/haproxy.tar.gz
+
+tar xzvf ~/haproxy.tar.gz -C ~/
+cd ~/haproxy-1.7.8
+
+make TARGET=linux2628
+sudo make install
+
+
+
+sudo mkdir -p /etc/haproxy
+sudo mkdir -p /run/haproxy
+sudo mkdir -p /var/lib/haproxy 
+sudo touch /var/lib/haproxy/stats
+
+sudo ln -s /usr/local/sbin/haproxy /usr/sbin/haproxy
+
+sudo cp ~/haproxy-1.7.8/examples/haproxy.init /etc/init.d/haproxy
+sudo chmod 755 /etc/init.d/haproxy
+sudo systemctl daemon-reload
+
+sudo useradd -r haproxy
+
+haproxy -v
+
+sudo firewall-cmd --permanent --zone=public --add-service=http
+sudo firewall-cmd --permanent --zone=public --add-port=8181/tcp
+sudo firewall-cmd --reload
+
+
+
+#######################################
+Configuring the load balancer
+#######################################
+
+####Load balancing at layer 4
+
+sudo vi /etc/haproxy/haproxy.cfg
+------------------------------------------------------------
+global
+ log /dev/log local0
+ log /dev/log local1 notice
+ chroot /var/lib/haproxy
+ stats socket /run/haproxy/admin.sock mode 660 level admin
+ stats timeout 30s
+ user haproxy
+ group haproxy
+ daemon
+
+defaults
+ log global
+ mode http
+ option httplog
+ option dontlognull
+ timeout connect 5000
+ timeout client 50000
+ timeout server 50000
+
+frontend http_front
+ bind *:80
+ stats uri /haproxy?stats
+ default_backend http_back
+
+backend http_back
+ balance roundrobin
+ server <server name> <private IP>:80 check
+ server <server name> <private IP>:80 check
+------------------------------------------------------------
+
+sudo systemctl restart haproxy
+
+
+
+####Configuring load balancing for layer 7
+
+sudo vi /etc/haproxy/haproxy.cfg
+------------------------------------------------------------
+frontend http_front
+ bind *:80
+ stats uri /haproxy?stats
+ acl url_blog path_beg /blog
+ use_backend blog_back if url_blog
+ default_backend http_back
+
+backend http_back
+ balance roundrobin
+ server <server name> <private IP>:80 check
+ server <server name> <private IP>:80 check
+
+backend blog_back
+ server <server name> <private IP>:80 check
+------------------------------------------------------------
+
+sudo systemctl restart haproxy
+
+
+
+#######################################
+Testing the setup
+#######################################
+
+http://<load balancer public IP>/haproxy?stats
+
+
+###Password protecting the statistics page
+listen stats
+ bind *:8181
+ stats enable
+ stats uri /
+ stats realm Haproxy\ Statistics
+ stats auth username:password
+ 
+sudo systemctl restart haproxy
+
+http://<load balancer public IP>:8181
+
+
+
+
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
