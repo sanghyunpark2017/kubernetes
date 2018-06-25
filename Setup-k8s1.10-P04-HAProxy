@@ -19,8 +19,6 @@ cd ~/haproxy-1.8.10
 make TARGET=linux2628
 sudo make install
 
-
-
 sudo mkdir -p /etc/haproxy
 sudo mkdir -p /run/haproxy
 sudo mkdir -p /var/lib/haproxy 
@@ -43,9 +41,15 @@ sudo firewall-cmd --reload
 
 
 
+
 #######################################
 Configuring Basic Setting
 #######################################
+
+로드밸런싱 구성 없이 stat만 수집했을 떄 리부팅 이후에 /run/haproxy 폴더가 사라짐
+따라서 admin.sock을 생성하지 못하고 haproxy 실행 오류가 발생함
+로드밸런싱 셋팅 하게 되면 리부팅하여 버그인지 체크해봐야함
+
 
 sudo vi /etc/haproxy/haproxy.cfg
 ------------------------------------------------------------
