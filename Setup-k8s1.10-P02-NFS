@@ -45,7 +45,7 @@ systemctl restart nfs-server
 systemctl restart nfs-lock
 systemctl restart nfs-idmap
 
-showmount -e 127.0.0.1
+showmount -e 10.10.64.90
 
 ##2.NFS클라이언트 설치(for worker nodes)
 
@@ -60,15 +60,18 @@ yum install -y nfs-utils
 systemctl enable rpcbind
 systemctl start rpcbind
 
-showmount -e 10.10.64.99
+showmount -e 10.10.64.90
 
 cat <<EOF >> /etc/fstab
-10.10.64.99:/nfs/public /mnt/public nfs hard 0 0
-10.10.64.99:/nfs/private /mnt/private nfs hard 0 0
+10.10.64.90:/nfs/public /mnt/public nfs soft 0 0
+10.10.64.90:/nfs/private /mnt/private nfs soft 0 0
 EOF
 cat /etc/fstab
 
 mount -a
+
+#umount /mnt/public
+#umount /mnt/private
 
 
 
