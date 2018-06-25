@@ -76,6 +76,7 @@ listen stats
  stats auth username:security
 ------------------------------------------------------------
 
+systemctl enable haproxy
 systemctl restart haproxy
 systemctl status haproxy
 
