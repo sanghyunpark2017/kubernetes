@@ -1,5 +1,15 @@
 
 https://itnext.io/migrating-a-spring-boot-service-to-kubernetes-in-5-steps-7c1702da81b6
+=>https://github.com/trisberg/s1p2017-boot-k8s/blob/master/demo-hello.adoc
+
+
+
+[표준이미지]
+nginx
+spring boot
+mariadb
+redis
+
 
 
 
