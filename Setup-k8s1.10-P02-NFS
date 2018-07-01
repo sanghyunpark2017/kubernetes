@@ -93,6 +93,14 @@ mount -a
 #umount /mnt/private
 
 
+mkdir -p /vol
+ln -s /mnt/public /vol
+ln -s /mnt/private /vol
+
+ll /vol/
+ll /vol/public/
+ll /vol/private/
+
 
 
 
