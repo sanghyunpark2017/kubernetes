@@ -6,5 +6,10 @@ vi /etc/docker/daemon.json
   "insecure-registries" : ["localhub:5000"]
 }
 
+#native docker로 샐행
+docker run -d -p 5000:5000 --name registry-srv registry:2
+docker run -d -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web 
+
+
 
 
