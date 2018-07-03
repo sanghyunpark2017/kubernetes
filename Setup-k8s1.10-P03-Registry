@@ -1,1 +1,10 @@
 
+#admin/node서버
+
+vi /etc/docker/daemon.json
+{
+  "insecure-registries" : ["localhub:5000"]
+}
+
+
+
