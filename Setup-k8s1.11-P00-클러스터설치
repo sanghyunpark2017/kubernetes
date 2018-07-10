@@ -1,0 +1,61 @@
+
+
+##############################
+Before you begin
+##############################
+
+-Three machines that meet kubeadm’s minimum requirements for the masters
+-Three machines that meet kubeadm’s minimum requirements for the workers
+-Full network connectivity between all machines in the cluster (public or private network is fine)
+-SSH access from one device to all nodes in the system (마스터 3대와 워커 3대)
+-sudo privileges on all machines
+
+cat << EOF >> /etc/hosts
+#kubernetes master
+10.10.64.61  t1vkubeadm1
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
+
+#kubernetes worker
+10.10.64.64  t1vkubework1
+10.10.64.65  t1vkubework2
+10.10.64.66  t1vkubework3
+
+#kubernetes etcd
+10.10.64.96  t1vkubeetcd1
+10.10.64.97  t1vkubeetcd2
+10.10.64.98  t1vkubeetcd3
+EOF
+
+ssh-keygen -t rsa
+
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm1
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm2
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm3
+
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework1
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework2
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework3
+
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd1
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd2
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
