@@ -9,10 +9,11 @@ Before you begin
 -Full network connectivity between all machines in the cluster (public or private network is fine)
 -SSH access from one device to all nodes in the system (마스터 3대와 워커 3대)
 -sudo privileges on all machines
+-그리고 External Etcd 3대
 
-################
-##SSH
-################
+################################
+## 사전작업 - SSH
+################################
 
 cat << EOF >> /etc/hosts
 #kubernetes master
@@ -47,7 +48,7 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd3
 
 
 ################################################################
-##Installing prerequisites on masters and workers
+## 사전작업 - 도커설치
 ################################################################
 
 #방화벽 일단 셧다운
@@ -67,7 +68,6 @@ sudo yum-config-manager \
 
 yum list docker-ce --showduplicates | sort -r
 
-
 yum install -y --setopt=obsoletes=0 \
   docker-ce-17.03.1.ce-1.el7.centos \
   docker-ce-selinux-17.03.1.ce-1.el7.centos
@@ -76,7 +76,14 @@ systemctl enable docker && systemctl start docker
 systemctl status docker
 
 
-###Installing kubeadm, kubelet and kubect
+#Docker version 17.03.1-ce, build c6d412e
+
+
+
+################################################################
+## 사전작업 - kubelet kubeadm kubectl 설치
+################################################################
+
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
@@ -87,16 +94,15 @@ repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
 
-setenforce 0 
-
-vi /etc/selinux/config
-SELINUX=disabled
-
+setenforce 0
 
 yum install -y kubelet kubeadm kubectl
-systemctl enable kubelet && systemctl start kubelet
-systemctl status kubelet
 
+systemctl enable kubelet && systemctl start kubelet
+
+#SELINUX 변경(enforcing -> disabled)
+sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+cat  /etc/selinux/config
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -104,8 +110,11 @@ net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
 
+#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 무시해도됨
 
-###Configure cgroup driver used by kubelet on Master Node
+###cgroup 드라이버를 도커와 kube간에 일치 시켜줘야함
+#yum으로 설치하면 systemd, docker ce로 설치하면 cgroup 
+#v1.11버전에서는 뒤에서 자동으로 맞춰줌
 docker info | grep -i cgroup
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
@@ -118,7 +127,143 @@ systemctl restart kubelet
 systemctl status kubelet
 
 
+ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
+
+
+################################################################
+## 사전작업 - master 3대 앞에 로드발랜서 구성 (HAPROXY 서버 1대)
+################################################################
+
+#kube-apiserver(Listen 6443)로드발랜싱을 위한 tcp 포워딩 로드발란서
+
+#haproxy 설치
+
+cd /etc/haproxy
+mv haproxy.cfg haproxy.cfg.bak
+
+
+vi /etc/haproxy/haproxy.cfg
+-------------------------------------------------
+global
+   log /dev/log local0
+   log /dev/log local1 notice
+   chroot /var/lib/haproxy
+   stats socket /run/haproxy/admin.sock mode 660 level admin
+   stats timeout 30s
+   user haproxy
+   group haproxy
+   daemon
+
+defaults
+   log global
+   mode http
+   option httplog
+   option dontlognull
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+
+frontend k8s-api
+  bind 10.10.64.99:6443
+  bind 127.0.0.1:6443
+  mode tcp
+  option tcplog
+  default_backend k8s-api
+
+backend k8s-api
+  mode tcp
+  option tcplog
+  option tcp-check
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+  server t1vkubeadm1 10.10.64.61:6443 check fall 3 rise 2
+  server t1vkubeadm2 10.10.64.62:6443 check fall 3 rise 2
+  server t1vkubeadm3 10.10.64.63:6443 check fall 3 rise 2
+-------------------------------------------------
+
+systemctl enable haproxy.service
+systemctl restart haproxy.service
+systemctl status haproxy.service
+
  
+firewall-cmd --get-default-zone
+
+firewall-cmd --permanent --zone=public --add-port=6443/tcp
+
+firewall-cmd --reload
+firewall-cmd --list-ports
+
+
+
+################################################################
+## master 1번 서버 설치
+################################################################
+
+#HAPROXY VIP FQDN 등록(나중에 DNS)
+cat << EOF >> /etc/hosts
+10.10.64.99  kubeapi.homeplusnet.co.kr
+EOF
+
+vi /root/kubeadm-config.yaml
+----------------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.0
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+  local:
+    extraArgs:
+      listen-client-urls: "https://127.0.0.1:2379,https://10.10.64.61:2379"
+      advertise-client-urls: "https://10.10.64.61:2379"
+      listen-peer-urls: "https://10.10.64.61:2380"
+      initial-advertise-peer-urls: "https://10.10.64.61:2380"
+      initial-cluster: "t1vkubeadm1=https://10.10.64.61:2380"
+    serverCertSANs:
+      - t1vkubeadm1
+      - 10.10.64.61
+    peerCertSANs:
+      - t1vkubeadm1
+      - 10.10.64.61
+networking:
+    # This CIDR is a Calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+----------------------------------------------------------------------------------------------
+
+kubeadm init --config kubeadm-config.yaml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
