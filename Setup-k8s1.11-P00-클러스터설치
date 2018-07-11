@@ -1,5 +1,4 @@
 
-
 ##############################
 Before you begin
 ##############################
@@ -11,8 +10,18 @@ Before you begin
 -sudo privileges on all machines
 -그리고 External Etcd 3대
 
+
+#사전작업은 master 3대, worker 3대, etcd 3대 모두 실행한다.
+
 ################################
-## 사전작업 - SSH
+## 사전작업 - 서버설정
+################################
+
+swap disable 필수
+
+
+################################
+## 사전작업 - SSH 
 ################################
 
 cat << EOF >> /etc/hosts
@@ -77,11 +86,7 @@ systemctl status docker
 
 docker --version
 
-
-
 #Docker version 17.03.1-ce, build c6d412e
-
-
 
 ################################################################
 ## 사전작업 - kubelet kubeadm kubectl 설치
@@ -116,12 +121,12 @@ sysctl --system
 
 systemctl status kubelet
 
-
 #kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 무시해도됨
 
+
 ###cgroup 드라이버를 도커와 kube간에 일치 시켜줘야함
-#yum으로 설치하면 systemd, docker ce로 설치하면 cgroup 
-#v1.11버전에서는 뒤에서 자동으로 맞춰줌
+#yum으로 설치하면 systemd, docker ce로 설치하면 cgroup 임. 
+#v1.11버전에서는 자동으로 맞춰주므로 PASS
 docker info | grep -i cgroup
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
@@ -201,6 +206,13 @@ firewall-cmd --reload
 firewall-cmd --list-ports
 
 
+################################################################
+################################################################
+################################################################
+### START(master와 etcd를 같이 실행)
+################################################################
+################################################################
+################################################################
 
 ################################################################
 ## master 1번 서버 설치
@@ -450,6 +462,30 @@ kubeadm alpha phase mark-master --config kubeadm-config.yaml
 kubectl get nodes -o=wide  
 kubectl get pod --all-namespaces
 
+#core-dns는 pending 상태이나 CNI 설치 후에는 running
+
+################################################################
+################################################################
+################################################################
+###       END (master + etcd)
+################################################################
+################################################################
+################################################################
+
+
+
+
+
+################################################################
+################################################################
+################################################################
+### START(master와 etcd를 따로 실행)
+################################################################
+################################################################
+################################################################
+
+#etcd 클러스터를 먼저 만들고, cert파일을 master 노드로 복사 후 진행
+
 
 ################################################################
 ## Set up a Highly Availabile etcd Cluster With kubeadm
@@ -460,8 +496,9 @@ kubectl get pod --all-namespaces
 #상호간에 ssh, scp가 되어야 함
 
 #Setting up the cluster
-
-#etcd를 위한 kubelet config
+#static pod etcd 실행을 위한 kubelet config
+#현재 "/etc/kubernetes/manifests" 경로는 없음. 뒤에 가서 생성함.
+#etcd 3대 모두 실행
 
 cat << EOF > /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf
 [Service]
@@ -474,6 +511,7 @@ systemctl daemon-reload
 systemctl restart kubelet
 systemctl status kubelet
 
+
 #etcd 1번 서버에서 kubeadm 위한 설정 파일 생성
  
 export HOST0=10.10.64.96
@@ -481,7 +519,6 @@ export HOST1=10.10.64.97
 export HOST2=10.10.64.98
  
 mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
-
 
 ETCDHOSTS=(${HOST0} ${HOST1} ${HOST2})
 NAMES=("infra0" "infra1" "infra2")
@@ -517,7 +554,7 @@ kubeadm alpha phase certs etcd-ca
 ll /etc/kubernetes/pki/etcd/ca.crt
 ll /etc/kubernetes/pki/etcd/ca.key
 
-#그럼 이제 etcd 맴버서버의 certificate 생성
+#그럼 이제 etcd 맴버서버들의 certificate을 임시 디렉토리에 생성 
 
 kubeadm alpha phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
 kubeadm alpha phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
@@ -550,18 +587,27 @@ USER=root
 HOST=${HOST1}
 scp -r /tmp/${HOST}/* ${USER}@${HOST}:
 ssh ${USER}@${HOST}
-   chown -R root:root pki
-   mv pki /etc/kubernetes/
-   exit
+---------------------------------------------
+  sudo -Es
+    chown -R root:root pki
+    mv pki /etc/kubernetes/
+    exit
+  exit
+---------------------------------------------
    
 #etcd 3번 호스트에 파일 복사
 USER=root
 HOST=${HOST2}
 scp -r /tmp/${HOST}/* ${USER}@${HOST}:
 ssh ${USER}@${HOST}
-   chown -R root:root pki
-   mv pki /etc/kubernetes/
-   exit
+---------------------------------------------
+  sudo -Es
+    chown -R root:root pki
+    mv pki /etc/kubernetes/
+    exit
+  exit
+---------------------------------------------
+
 
 #etcd 1/2/3 모두 ca확인
 yum install -y tree
@@ -572,44 +618,42 @@ tree /tmp/${HOST0}
 tree /etc/kubernetes/pki
 
 #etcd 2/3
+#etcd 1번 서버와 다른 점은 ca.key 파일이 없어야 함(앞서 삭제함)
 clear
 tree /root
 tree /etc/kubernetes/pki
 
+#Create the static pod manifests
+#각 서버에 "/etc/kubernetes/manifests/etcd.yaml" 파일이 생성됨
+t1vkubeetcd1# kubeadm alpha phase etcd local --config=/tmp/${HOST0}/kubeadmcfg.yaml
+t1vkubeetcd2# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
+t1vkubeetcd3# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
 
-#각각의 etcd서버에서 실행
-etcd1# kubeadm alpha phase etcd local --config=/tmp/${HOST0}/kubeadmcfg.yaml
-etcd2# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
-etcd3# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
+#각 서버에 파일들을 보면 호스트이름을 뺀 나머지는 모두 같음. 리슨포트는 127.0.0.1로 되어있음
+cat /etc/kubernetes/manifests/etcd.yaml
+
+#가이드에는 없지만 리슨포트를 127.0.0.1에서 0.0.0.0(ALL IP)로 변경함
+#sed -i "s/127.0.0.1/0.0.0.0/g" /etc/kubernetes/manifests/etcd.yaml
+#했더니만 certification이 127.0.0.1에 valid하여 오류가 발생함;;;
+
+
+#리슨포트 변경 반영 후 확인
+systemctl restart docker
+systemctl restart kubulet
+
+docker ps
 
 #Check the cluster health
-
 docker run --rm -it \
 --net host \
 -v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
 --cert-file /etc/kubernetes/pki/etcd/peer.crt \
 --key-file /etc/kubernetes/pki/etcd/peer.key \
 --ca-file /etc/kubernetes/pki/etcd/ca.crt \
---endpoints https://${HOST0}:2379 cluster-health
+--endpoints https://127.0.0.1:2379 cluster-health
 
-@@@@ 혹시 지금 etcd 설치한 것이 etcd 클러스터 맴버 설치 즉, master1/2/3에 했어야 하는건가???
-
-
-
-cat /etc/kubernetes/pki/etcd/ca.crt
-cat /etc/kubernetes/pki/apiserver-etcd-client.crt
-cat /etc/kubernetes/pki/apiserver-etcd-client.key
-
-
-
-
-
-
-
-
-
-
-
+ 
+ 
 
 
 
