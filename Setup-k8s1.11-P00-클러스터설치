@@ -75,6 +75,9 @@ yum install -y --setopt=obsoletes=0 \
 systemctl enable docker && systemctl start docker
 systemctl status docker
 
+docker --version
+
+
 
 #Docker version 17.03.1-ce, build c6d412e
 
@@ -109,6 +112,10 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
+
+
+systemctl status kubelet
+
 
 #kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 무시해도됨
 
@@ -423,8 +430,8 @@ systemctl status kubelet
 
 CP0_IP=10.10.64.61
 CP0_HOSTNAME=t1vkubeadm1
-CP2_IP=10.10.64.62
-CP2_HOSTNAME=t1vkubeadm2
+CP2_IP=10.10.64.63
+CP2_HOSTNAME=t1vkubeadm3
 
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP2_HOSTNAME} https://${CP2_IP}:2380
 
@@ -441,7 +448,159 @@ kubeadm alpha phase mark-master --config kubeadm-config.yaml
 
 #master 1번 서버에서 master 된 것 확인 (아직 rule은 none 상태)
 kubectl get nodes -o=wide  
-  
+kubectl get pod --all-namespaces
+
+
+################################################################
+## Set up a Highly Availabile etcd Cluster With kubeadm
+################################################################
+
+#현재 etcd는 각 마스터서버의 static pod로 실행되고 있고 HA 구성은 아님
+#etcd 서버 3대를 별도로 둔다. docker, kubelet, kubeadm이 설치되어 있어야 하고 (앞에 가이드 참고)
+#상호간에 ssh, scp가 되어야 함
+
+#Setting up the cluster
+
+#etcd를 위한 kubelet config
+
+cat << EOF > /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/kubelet --pod-manifest-path=/etc/kubernetes/manifests --allow-privileged=true
+Restart=always
+EOF
+
+systemctl daemon-reload
+systemctl restart kubelet
+systemctl status kubelet
+
+#etcd 1번 서버에서 kubeadm 위한 설정 파일 생성
+ 
+export HOST0=10.10.64.96
+export HOST1=10.10.64.97
+export HOST2=10.10.64.98
+ 
+mkdir -p /tmp/${HOST0}/ /tmp/${HOST1}/ /tmp/${HOST2}/
+
+
+ETCDHOSTS=(${HOST0} ${HOST1} ${HOST2})
+NAMES=("infra0" "infra1" "infra2")
+
+for i in "${!ETCDHOSTS[@]}"; do
+HOST=${ETCDHOSTS[$i]}
+NAME=${NAMES[$i]}
+cat << EOF > /tmp/${HOST}/kubeadmcfg.yaml
+apiVersion: "kubeadm.k8s.io/v1alpha2"
+kind: MasterConfiguration
+etcd:
+    localEtcd:
+        serverCertSANs:
+        - "${HOST}"
+        peerCertSANs:
+        - "${HOST}"
+        extraArgs:
+            initial-cluster: infra0=https://${ETCDHOSTS[0]}:2380,infra1=https://${ETCDHOSTS[1]}:2380,infra2=https://${ETCDHOSTS[2]}:2380
+            initial-cluster-state: new
+            name: ${NAME}
+            listen-peer-urls: https://${HOST}:2380
+            listen-client-urls: https://${HOST}:2379
+            advertise-client-urls: https://${HOST}:2379
+            initial-advertise-peer-urls: https://${HOST}:2380
+EOF
+done
+
+
+#etcd 1번 서버에서 CA 생성
+kubeadm alpha phase certs etcd-ca
+
+#아래 2개 파일이 생성됨
+ll /etc/kubernetes/pki/etcd/ca.crt
+ll /etc/kubernetes/pki/etcd/ca.key
+
+#그럼 이제 etcd 맴버서버의 certificate 생성
+
+kubeadm alpha phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-peer --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-healthcheck-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+kubeadm alpha phase certs apiserver-etcd-client --config=/tmp/${HOST2}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST2}/
+# cleanup non-reusable certificates
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+kubeadm alpha phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+kubeadm alpha phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
+cp -R /etc/kubernetes/pki /tmp/${HOST1}/
+find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
+
+kubeadm alpha phase certs etcd-server --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-peer --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm alpha phase certs etcd-healthcheck-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+kubeadm alpha phase certs apiserver-etcd-client --config=/tmp/${HOST0}/kubeadmcfg.yaml
+# No need to move the certs because they are for HOST0
+
+# clean up certs that should not be copied off this host
+find /tmp/${HOST2} -name ca.key -type f -delete
+find /tmp/${HOST1} -name ca.key -type f -delete
+
+
+#etcd 2번 호스트에 파일 복사
+USER=root
+HOST=${HOST1}
+scp -r /tmp/${HOST}/* ${USER}@${HOST}:
+ssh ${USER}@${HOST}
+   chown -R root:root pki
+   mv pki /etc/kubernetes/
+   exit
+   
+#etcd 3번 호스트에 파일 복사
+USER=root
+HOST=${HOST2}
+scp -r /tmp/${HOST}/* ${USER}@${HOST}:
+ssh ${USER}@${HOST}
+   chown -R root:root pki
+   mv pki /etc/kubernetes/
+   exit
+
+#etcd 1/2/3 모두 ca확인
+yum install -y tree
+
+#etcd 1
+clear
+tree /tmp/${HOST0}
+tree /etc/kubernetes/pki
+
+#etcd 2/3
+clear
+tree /root
+tree /etc/kubernetes/pki
+
+
+#각각의 etcd서버에서 실행
+etcd1# kubeadm alpha phase etcd local --config=/tmp/${HOST0}/kubeadmcfg.yaml
+etcd2# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
+etcd3# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
+
+#Check the cluster health
+
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
+--cert-file /etc/kubernetes/pki/etcd/peer.crt \
+--key-file /etc/kubernetes/pki/etcd/peer.key \
+--ca-file /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://${HOST0}:2379 cluster-health
+
+@@@@ 혹시 지금 etcd 설치한 것이 etcd 클러스터 맴버 설치 즉, master1/2/3에 했어야 하는건가???
+
+
+
+cat /etc/kubernetes/pki/etcd/ca.crt
+cat /etc/kubernetes/pki/apiserver-etcd-client.crt
+cat /etc/kubernetes/pki/apiserver-etcd-client.key
+
+
 
 
 
