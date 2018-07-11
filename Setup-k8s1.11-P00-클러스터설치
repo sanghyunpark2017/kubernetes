@@ -232,19 +232,216 @@ networking:
     podSubnet: "192.168.0.0/16"
 ----------------------------------------------------------------------------------------------
 
+systemctl stop firewalld 
+systemctl disable firewalld
+
 kubeadm init --config kubeadm-config.yaml
 
+# 성공적인 init 이후
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get nodes
+kubectl get pods --namespace=kube-system -o=wide
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 모든 POD가 Running 상태인 것 확인 후 다음 진행(coredns제외)
 
 
+#master 1번 서버에서 init 이후에 생성된 파일들을 다른 master서버로 복사
 
 
+vi /root/mycopy.sh
+----------------------------------------------------------------------------------------------
+USER=root # customizable
+CONTROL_PLANE_IPS="10.10.64.62 10.10.64.63"
+for host in ${CONTROL_PLANE_IPS}; do
+    scp /etc/kubernetes/pki/ca.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/ca.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/sa.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/sa.pub "${USER}"@$host:
+    scp /etc/kubernetes/pki/front-proxy-ca.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/front-proxy-ca.key "${USER}"@$host:
+    scp /etc/kubernetes/pki/etcd/ca.crt "${USER}"@$host:etcd-ca.crt
+    scp /etc/kubernetes/pki/etcd/ca.key "${USER}"@$host:etcd-ca.key
+    scp /etc/kubernetes/admin.conf "${USER}"@$host:
+done
+----------------------------------------------------------------------------------------------
+
+chmod 755 mycopy.sh
+./mycopy.sh
 
 
+################################################################
+## master 2번 서버 설치
+################################################################
+
+#HAPROXY VIP FQDN 등록(나중에 DNS)
+cat << EOF >> /etc/hosts
+10.10.64.99  kubeapi.homeplusnet.co.kr
+EOF
 
 
+#master 1번 서버의 config와 다름
+
+vi /root/kubeadm-config.yaml
+----------------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.0
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+  local:
+    extraArgs:
+      listen-client-urls: "https://127.0.0.1:2379,https://10.10.64.62:2379"
+      advertise-client-urls: "https://10.10.64.62:2379"
+      listen-peer-urls: "https://10.10.64.62:2380"
+      initial-advertise-peer-urls: "https://10.10.64.62:2380"
+      initial-cluster: "t1vkubeadm1=https://10.10.64.61:2380,t1vkubeadm2=https://10.10.64.62:2380"
+      initial-cluster-state: existing
+    serverCertSANs:
+      - t1vkubeadm2
+      - 10.10.64.62
+    peerCertSANs:
+      - t1vkubeadm2
+      - 10.10.64.62
+networking:
+    # This CIDR is a calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+----------------------------------------------------------------------------------------------
 
 
+#master 1번에서 가져온 파일을 제 위치로 이동
 
+mkdir -p /etc/kubernetes/pki/etcd
+
+mv /root/ca.crt /etc/kubernetes/pki/
+mv /root/ca.key /etc/kubernetes/pki/
+mv /root/sa.pub /etc/kubernetes/pki/
+mv /root/sa.key /etc/kubernetes/pki/
+mv /root/front-proxy-ca.crt /etc/kubernetes/pki/
+mv /root/front-proxy-ca.key /etc/kubernetes/pki/
+mv /root/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
+mv /root/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
+mv /root/admin.conf /etc/kubernetes/admin.conf
+
+
+kubeadm alpha phase certs all --config kubeadm-config.yaml
+kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
+kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
+kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
+systemctl start kubelet
+
+#노드를 etcd cluster에 추가
+CP0_IP=10.10.64.61
+CP0_HOSTNAME=t1vkubeadm1
+CP1_IP=10.10.64.62
+CP1_HOSTNAME=t1vkubeadm2
+
+KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP1_HOSTNAME} https://${CP1_IP}:2380
+kubeadm alpha phase etcd local --config kubeadm-config.yaml
+
+#Deploy the control plane components and mark the node as a master:
+
+kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
+kubeadm alpha phase controlplane all --config kubeadm-config.yaml
+kubeadm alpha phase mark-master --config kubeadm-config.yaml
+  
+#master 1번에서 master 역활로 변경된 것 확인
+kubectl get nodes -o=wide
+
+################################################################
+## master 3번 서버 설치
+################################################################
+
+#HAPROXY VIP FQDN 등록(나중에 DNS)
+cat << EOF >> /etc/hosts
+10.10.64.99  kubeapi.homeplusnet.co.kr
+EOF
+
+
+#master 1/2번 서버의 config와 다름
+
+vi /root/kubeadm-config.yaml
+----------------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.0
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+  local:
+    extraArgs:
+      listen-client-urls: "https://127.0.0.1:2379,https://10.10.64.63:2379"
+      advertise-client-urls: "https://10.10.64.63:2379"
+      listen-peer-urls: "https://10.10.64.63:2380"
+      initial-advertise-peer-urls: "https://10.10.64.63:2380"
+      initial-cluster: "t1vkubeadm1=https://10.10.64.61:2380,t1vkubeadm2=https://10.10.64.62:2380,t1vkubeadm3=https://10.10.64.63:2380"
+      initial-cluster-state: existing
+    serverCertSANs:
+      - t1vkubeadm3
+      - 10.10.64.63
+    peerCertSANs:
+      - t1vkubeadm3
+      - 10.10.64.63
+networking:
+    # This CIDR is a calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+----------------------------------------------------------------------------------------------
+
+#master 1번에서 가져온 파일을 제 위치로 이동
+
+mkdir -p /etc/kubernetes/pki/etcd
+
+mv /root/ca.crt /etc/kubernetes/pki/
+mv /root/ca.key /etc/kubernetes/pki/
+mv /root/sa.pub /etc/kubernetes/pki/
+mv /root/sa.key /etc/kubernetes/pki/
+mv /root/front-proxy-ca.crt /etc/kubernetes/pki/
+mv /root/front-proxy-ca.key /etc/kubernetes/pki/
+mv /root/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
+mv /root/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
+mv /root/admin.conf /etc/kubernetes/admin.conf
+
+#Run the kubeadm phase commands to bootstrap the kubelet:
+
+kubeadm alpha phase certs all --config kubeadm-config.yaml
+kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
+kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
+kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
+
+systemctl start kubelet
+systemctl status kubelet
+
+#Run the commands to add the node to the etcd cluster:
+
+CP0_IP=10.10.64.61
+CP0_HOSTNAME=t1vkubeadm1
+CP2_IP=10.10.64.62
+CP2_HOSTNAME=t1vkubeadm2
+
+KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP2_HOSTNAME} https://${CP2_IP}:2380
+
+kubeadm alpha phase etcd local --config kubeadm-config.yaml
+
+#master 1번 서버에서 join 된 것 확인 (아직 rule은 none 상태)
+kubectl get nodes -o=wide
+
+#Deploy the control plane components and mark the node as a master:
+
+kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
+kubeadm alpha phase controlplane all --config kubeadm-config.yaml
+kubeadm alpha phase mark-master --config kubeadm-config.yaml
+
+#master 1번 서버에서 master 된 것 확인 (아직 rule은 none 상태)
+kubectl get nodes -o=wide  
+  
 
 
 
