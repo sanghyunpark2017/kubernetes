@@ -1,4 +1,10 @@
 
+
+#api서버 L4로 바라보게 할 때 제대로 포인팅 되지 않으면 문제되고
+#HAPROXY 설정이 중요하고
+#kubelet 중지하고 설치하는 과정도 중요함
+
+
 ##############################
 Before you begin
 ##############################
@@ -497,6 +503,13 @@ kubectl get pods --namespace=kube-system
 
 
 이제 각 마스터의 FQDN을 자기 자신을 바라보게 함
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
 
 #master 1번
 cat << EOF >> /etc/hosts
