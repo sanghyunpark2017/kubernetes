@@ -488,14 +488,15 @@ kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/
 kubectl get pods --namespace=kube-system
  
 #>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
-#되어야 하는데 ERROR가 발생함;;
-해당 마스터서버 리부팅하니 정상화됨
+#이제는 노드들도 모두 ready 상태가 됨
+#만약 coredns error 상태면 마스터 리붓함(뭔가 설치과정이 잘도쇧ㅁ)
 
 
 
 
 
 
+이제 각 마스터의 FQDN을 자기 자신을 바라보게 함
 
 #master 1번
 cat << EOF >> /etc/hosts
