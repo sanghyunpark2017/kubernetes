@@ -88,7 +88,7 @@ EOF
 sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
 cat  /etc/selinux/config
 
-
+setenforce 0
 
 yum install -y kubelet kubeadm kubectl
 systemctl enable kubelet && systemctl start kubelet
