@@ -24,9 +24,18 @@ systemctl disable firewalld
 systemctl stop firewalld
 
 #FQDN은 DNS에 넣어주고(실제 L4권장), 각 마스터서버들은 가기 자신을 바라보게 한다(중요) 
+#10.10.64.99  kubeapi.homeplusnet.co.kr
+
+
+#stacked 방식으로 마스터 1대씩 붙일 때는 L4를 쓰고,
+#설치가 끝나서 자기 자신이 MASTER가 되면 kubeapi를 자기 자신으로 바라보게 하는 것이 유리함(뒤에 조정됨)
+
 cat << EOF >> /etc/hosts
-10.10.64.99  kubeapi.homeplusnet.co.kr
+10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
 EOF
+
 
 #SELINUX 변경(enforcing -> disabled)
 sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
@@ -40,45 +49,17 @@ shutdown -r now
 ## 사전작업 - SSH 
 ################################
 
-cat << EOF >> /etc/hosts
-#kubernetes master
-10.10.64.61  t1vkubeadm1 t1vkubeadm1.homeplusnet.co.kr
-10.10.64.62  t1vkubeadm2 t1vkubeadm2.homeplusnet.co.kr
-10.10.64.63  t1vkubeadm3 t1vkubeadm3.homeplusnet.co.kr
-
-#kubernetes worker
-10.10.64.64  t1vkubework1 t1vkubework1.homeplusnet.co.kr
-10.10.64.65  t1vkubework2 t1vkubework2.homeplusnet.co.kr
-10.10.64.66  t1vkubework3 t1vkubework3.homeplusnet.co.kr
-
-#kubernetes etcd
-10.10.64.96  t1vkubeetcd1 t1vkubeetcd1.homeplusnet.co.kr
-10.10.64.97  t1vkubeetcd2 t1vkubeetcd2.homeplusnet.co.kr
-10.10.64.98  t1vkubeetcd3 t1vkubeetcd3.homeplusnet.co.kr
-
-#kuberntes LB
-10.10.64.99 kubeapi kubeapi.homeplusnet.co.kr
-EOF
-
 ssh-keygen -t rsa
 
 ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm1
 ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm2
 ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm3
 
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework1
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework2
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubework3
-
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd1
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd2
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd3
 
 
 ################################################################
 ## 사전작업 - 도커설치
 ################################################################
-
 
 ###Installing Docker
 #Docker Version 17.03 is recommended. Versions 17.06+ might work
@@ -121,9 +102,7 @@ EOF
 setenforce 0
 
 yum install -y kubelet kubeadm kubectl
-
 systemctl enable kubelet && systemctl start kubelet
-
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -131,8 +110,10 @@ net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
 
-
 systemctl status kubelet
+
+
+
 
 #kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 지금은 그냥 무시
 
@@ -151,7 +132,7 @@ systemctl restart kubelet
 
 systemctl status kubelet
 
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
+#>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
 
 
 ################################################################
@@ -348,7 +329,7 @@ mv /${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
 mv /${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
 mv /${USER}/admin.conf /etc/kubernetes/admin.conf
 
-## 중요!!! 이것이 ???
+## 중요!!! 이 명령어가 매우 중요함!!!!!!!!!! (도큐에 없음 도뀨!!)
 systemctl stop kubelet
 
 kubeadm alpha phase certs all --config kubeadm-config.yaml
@@ -374,17 +355,21 @@ CP0_HOSTNAME=t1vkubeadm1
 CP1_IP=10.10.64.62
 CP1_HOSTNAME=t1vkubeadm2
 
-#중요! 2개 명령어를 동시에 실행함. etcd cluster add로 인해 master 1번에서 kubectl 수십 초에서 수분 동안 동작하지 않음
-#>>>>> 수분 후에 master 1번에서 etcd2번 호스트 추가됨을 확인
+#중요! 2개 명령어를 동시에 실행함.
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP1_HOSTNAME} https://${CP1_IP}:2380
 kubeadm alpha phase etcd local --config kubeadm-config.yaml
+
+#>>>>> etcd cluster add로 인해 master 1번에서 kubectl 수십 초에서 수분 동안 동작하지 않음
+#>>>>> master 2번의 etcd pod 1개가 추가됨을 확인
+
 
 #Deploy the control plane components and mark the node as a master:
 kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
 
-#>>>>> 2번 호스트의 api, controller, scheduler 3개가 추가로 running됨
+#>>>>> master2번의 api, controller, scheduler pod 등 총 3개가 추가로 running됨
+
 
 
 
@@ -463,6 +448,9 @@ kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
 #>>>>> 이제 3번 호스트의 etcd pod가 생성됨
 
+
+
+
 #Deploy the control plane components and mark the node as a master:
 kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
@@ -509,6 +497,26 @@ kubectl get pods --namespace=kube-system
 
 
 
+#master 1번
+cat << EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
+EOF
+
+#master 2번
+cat << EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1 
+10.10.64.62  t1vkubeadm2 kubeapi.homeplusnet.co.kr
+10.10.64.63  t1vkubeadm3
+EOF
+
+#master 3번
+cat << EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1 
+10.10.64.62  t1vkubeadm2 
+10.10.64.63  t1vkubeadm3 kubeapi.homeplusnet.co.kr
+EOF
 
 
 
