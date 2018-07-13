@@ -23,6 +23,7 @@ swapoff -a
 systemctl disable firewalld
 systemctl stop firewalld
 
+#FQDN은 DNS에 넣어주고(실제 L4권장), 각 마스터서버들은 가기 자신을 바라보게 한다(중요) 
 cat << EOF >> /etc/hosts
 10.10.64.99  kubeapi.homeplusnet.co.kr
 EOF
@@ -495,11 +496,33 @@ Installing a pod network add-on
 #master1번 서버에서만 실행
 kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
 kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
-
+ 
 kubectl get pods --namespace=kube-system
  
 #>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
 #되어야 하는데 ERROR가 발생함;;
+해당 마스터서버 리부팅하니 정상화됨
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
