@@ -83,8 +83,11 @@ repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
 
-vi /etc/selinux/config
-SELINUX=disabled
+#vi /etc/selinux/config
+#SELINUX=disabled
+sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+cat  /etc/selinux/config
+
 
 
 yum install -y kubelet kubeadm kubectl
