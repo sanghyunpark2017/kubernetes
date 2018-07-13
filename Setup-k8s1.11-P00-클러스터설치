@@ -16,8 +16,24 @@ Before you begin
 ################################
 ## 사전작업 - 서버설정
 ################################
+vi /etc/fstab
 
-swap disable 필수
+swapoff -a
+
+systemctl disable firewalld
+systemctl stop firewalld
+
+cat << EOF >> /etc/hosts
+#10.10.64.99  kubeapi.homeplusnet.co.kr
+10.10.64.90  kubeapi.homeplusnet.co.kr
+EOF
+
+#SELINUX 변경(enforcing -> disabled)
+sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+cat  /etc/selinux/config
+
+
+shutdown -r now
 
 
 ################################
@@ -60,9 +76,6 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeetcd3
 ## 사전작업 - 도커설치
 ################################################################
 
-#방화벽 일단 셧다운
-systemctl disable firewalld
-systemctl stop firewalld
 
 ###Installing Docker
 #Docker Version 17.03 is recommended. Versions 17.06+ might work
@@ -108,9 +121,6 @@ yum install -y kubelet kubeadm kubectl
 
 systemctl enable kubelet && systemctl start kubelet
 
-#SELINUX 변경(enforcing -> disabled)
-sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
-cat  /etc/selinux/config
 
 cat <<EOF >  /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -121,7 +131,7 @@ sysctl --system
 
 systemctl status kubelet
 
-#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 무시해도됨
+#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 지금은 그냥 무시
 
 
 ###cgroup 드라이버를 도커와 kube간에 일치 시켜줘야함
@@ -138,8 +148,7 @@ systemctl restart kubelet
 
 systemctl status kubelet
 
-
- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
 
 
 ################################################################
@@ -155,7 +164,7 @@ mv haproxy.cfg haproxy.cfg.bak
 
 
 vi /etc/haproxy/haproxy.cfg
--------------------------------------------------
+--------------------------------------------------------------------------------------------------
 global
    log /dev/log local0
    log /dev/log local1 notice
@@ -191,7 +200,7 @@ backend k8s-api
   server t1vkubeadm1 10.10.64.61:6443 check fall 3 rise 2
   server t1vkubeadm2 10.10.64.62:6443 check fall 3 rise 2
   server t1vkubeadm3 10.10.64.63:6443 check fall 3 rise 2
--------------------------------------------------
+--------------------------------------------------------------------------------------------------
 
 systemctl enable haproxy.service
 systemctl restart haproxy.service
@@ -218,10 +227,17 @@ firewall-cmd --list-ports
 ## master 1번 서버 설치
 ################################################################
 
-#HAPROXY VIP FQDN 등록(나중에 DNS)
-cat << EOF >> /etc/hosts
-10.10.64.99  kubeapi.homeplusnet.co.kr
-EOF
+################################
+##  - master1
+################################
+
+eval $(ssh-agent)
+#ssh-add ~/.ssh/path_to_private_key
+ssh-add ~/.ssh/id_rsa
+
+ssh -A 10.10.64.61
+sudo -E -s
+
 
 vi /root/kubeadm-config.yaml
 ----------------------------------------------------------------------------------------------
@@ -251,28 +267,23 @@ networking:
     podSubnet: "192.168.0.0/16"
 ----------------------------------------------------------------------------------------------
 
-systemctl stop firewalld 
-systemctl disable firewalld
-
+cd ~
 kubeadm init --config kubeadm-config.yaml
 
-# 성공적인 init 이후
 
+
+# 성공적인 init 이후
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
+#coredns 2개를 제외한 나머지 5개 POD running이면 다음 진행 (coredns는 CNI 설치 후 running됨)
 kubectl get nodes
 kubectl get pods --namespace=kube-system -o=wide
 
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 모든 POD가 Running 상태인 것 확인 후 다음 진행(coredns제외)
 
+#init 이후에 master 1번 서버에 생성된 파일들을 다른 master서버로 복사
 
-#master 1번 서버에서 init 이후에 생성된 파일들을 다른 master서버로 복사
-
-
-vi /root/mycopy.sh
-----------------------------------------------------------------------------------------------
 USER=root # customizable
 CONTROL_PLANE_IPS="10.10.64.62 10.10.64.63"
 for host in ${CONTROL_PLANE_IPS}; do
@@ -286,23 +297,11 @@ for host in ${CONTROL_PLANE_IPS}; do
     scp /etc/kubernetes/pki/etcd/ca.key "${USER}"@$host:etcd-ca.key
     scp /etc/kubernetes/admin.conf "${USER}"@$host:
 done
-----------------------------------------------------------------------------------------------
-
-chmod 755 mycopy.sh
-./mycopy.sh
 
 
 ################################################################
 ## master 2번 서버 설치
 ################################################################
-
-#HAPROXY VIP FQDN 등록(나중에 DNS)
-cat << EOF >> /etc/hosts
-10.10.64.99  kubeapi.homeplusnet.co.kr
-EOF
-
-
-#master 1번 서버의 config와 다름
 
 vi /root/kubeadm-config.yaml
 ----------------------------------------------------------------------------------------------
@@ -333,35 +332,45 @@ networking:
     podSubnet: "192.168.0.0/16"
 ----------------------------------------------------------------------------------------------
 
-
 #master 1번에서 가져온 파일을 제 위치로 이동
-
+USER=root # customizable
 mkdir -p /etc/kubernetes/pki/etcd
-
-mv /root/ca.crt /etc/kubernetes/pki/
-mv /root/ca.key /etc/kubernetes/pki/
-mv /root/sa.pub /etc/kubernetes/pki/
-mv /root/sa.key /etc/kubernetes/pki/
-mv /root/front-proxy-ca.crt /etc/kubernetes/pki/
-mv /root/front-proxy-ca.key /etc/kubernetes/pki/
-mv /root/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
-mv /root/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
-mv /root/admin.conf /etc/kubernetes/admin.conf
+mv /${USER}/ca.crt /etc/kubernetes/pki/
+mv /${USER}/ca.key /etc/kubernetes/pki/
+mv /${USER}/sa.pub /etc/kubernetes/pki/
+mv /${USER}/sa.key /etc/kubernetes/pki/
+mv /${USER}/front-proxy-ca.crt /etc/kubernetes/pki/
+mv /${USER}/front-proxy-ca.key /etc/kubernetes/pki/
+mv /${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
+mv /${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
+mv /${USER}/admin.conf /etc/kubernetes/admin.conf
 
 
 kubeadm alpha phase certs all --config kubeadm-config.yaml
 kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
 kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
 kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
+
 systemctl start kubelet
 
+
+
+#master 1번 서버에서 node와 POD 확인
+#node는 추가되고 role은 none 상태임, proxy 1개가 추가됨
+kubectl get nodes -o=wide
+kubectl get pods --namespace=kube-system -o=wide
+
+
 #노드를 etcd cluster에 추가
+#중요!!!! 2번 마스터로 이동
+#중요!!!! 2번 마스터로 이동
 CP0_IP=10.10.64.61
 CP0_HOSTNAME=t1vkubeadm1
 CP1_IP=10.10.64.62
 CP1_HOSTNAME=t1vkubeadm2
 
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP1_HOSTNAME} https://${CP1_IP}:2380
+
 kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
 #Deploy the control plane components and mark the node as a master:
@@ -370,18 +379,14 @@ kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
   
-#master 1번에서 master 역활로 변경된 것 확인
-kubectl get nodes -o=wide
+>>> 이제 api, controller, scheduler 3개가 추가로 running됨
+>>> node는 master 상태로 변경
+
+
 
 ################################################################
 ## master 3번 서버 설치
 ################################################################
-
-#HAPROXY VIP FQDN 등록(나중에 DNS)
-cat << EOF >> /etc/hosts
-10.10.64.99  kubeapi.homeplusnet.co.kr
-EOF
-
 
 #master 1/2번 서버의 config와 다름
 
@@ -415,45 +420,45 @@ networking:
 ----------------------------------------------------------------------------------------------
 
 #master 1번에서 가져온 파일을 제 위치로 이동
-
+USER=root # customizable
 mkdir -p /etc/kubernetes/pki/etcd
+mv /${USER}/ca.crt /etc/kubernetes/pki/
+mv /${USER}/ca.key /etc/kubernetes/pki/
+mv /${USER}/sa.pub /etc/kubernetes/pki/
+mv /${USER}/sa.key /etc/kubernetes/pki/
+mv /${USER}/front-proxy-ca.crt /etc/kubernetes/pki/
+mv /${USER}/front-proxy-ca.key /etc/kubernetes/pki/
+mv /${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
+mv /${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
+mv /${USER}/admin.conf /etc/kubernetes/admin.conf
 
-mv /root/ca.crt /etc/kubernetes/pki/
-mv /root/ca.key /etc/kubernetes/pki/
-mv /root/sa.pub /etc/kubernetes/pki/
-mv /root/sa.key /etc/kubernetes/pki/
-mv /root/front-proxy-ca.crt /etc/kubernetes/pki/
-mv /root/front-proxy-ca.key /etc/kubernetes/pki/
-mv /root/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
-mv /root/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
-mv /root/admin.conf /etc/kubernetes/admin.conf
 
 #Run the kubeadm phase commands to bootstrap the kubelet:
-
 kubeadm alpha phase certs all --config kubeadm-config.yaml
 kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
 kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
 kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
 
-systemctl start kubelet
+systemctl restart kubelet
 systemctl status kubelet
 
 #Run the commands to add the node to the etcd cluster:
+
 
 CP0_IP=10.10.64.61
 CP0_HOSTNAME=t1vkubeadm1
 CP2_IP=10.10.64.63
 CP2_HOSTNAME=t1vkubeadm3
-
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP2_HOSTNAME} https://${CP2_IP}:2380
-
 kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
+
+
+
 #master 1번 서버에서 join 된 것 확인 (아직 rule은 none 상태)
-kubectl get nodes -o=wide
+#kubectl get nodes -o=wide
 
 #Deploy the control plane components and mark the node as a master:
-
 kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
@@ -484,12 +489,12 @@ kubectl get pod --all-namespaces
 ################################################################
 ################################################################
 
-#etcd 클러스터를 먼저 만들고, cert파일을 master 노드로 복사 후 진행
-
+#etcd 클러스터를 먼저 만들고, cert파일을 master 노드로 복사 후 진행하게 됨
 
 ################################################################
 ## Set up a Highly Availabile etcd Cluster With kubeadm
 ################################################################
+
 
 #현재 etcd는 각 마스터서버의 static pod로 실행되고 있고 HA 구성은 아님
 #etcd 서버 3대를 별도로 둔다. docker, kubelet, kubeadm이 설치되어 있어야 하고 (앞에 가이드 참고)
@@ -498,8 +503,9 @@ kubectl get pod --all-namespaces
 #Setting up the cluster
 #static pod etcd 실행을 위한 kubelet config
 #현재 "/etc/kubernetes/manifests" 경로는 없음. 뒤에 가서 생성함.
-#etcd 3대 모두 실행
 
+
+#etcd 3대 모두 실행
 cat << EOF > /etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf
 [Service]
 ExecStart=
@@ -554,6 +560,9 @@ kubeadm alpha phase certs etcd-ca
 ll /etc/kubernetes/pki/etcd/ca.crt
 ll /etc/kubernetes/pki/etcd/ca.key
 
+#rm -f  /etc/kubernetes/pki/etcd/*.*
+
+
 #그럼 이제 etcd 맴버서버들의 certificate을 임시 디렉토리에 생성 
 
 kubeadm alpha phase certs etcd-server --config=/tmp/${HOST2}/kubeadmcfg.yaml
@@ -565,6 +574,9 @@ cp -R /etc/kubernetes/pki /tmp/${HOST2}/
 find /etc/kubernetes/pki -not -name ca.crt -not -name ca.key -type f -delete
 
 kubeadm alpha phase certs etcd-server --config=/tmp/${HOST1}/kubeadmcfg.yaml
+--> 여기서 127.0.0.1 ::1 이 지정됨;
+
+
 kubeadm alpha phase certs etcd-peer --config=/tmp/${HOST1}/kubeadmcfg.yaml
 kubeadm alpha phase certs etcd-healthcheck-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
 kubeadm alpha phase certs apiserver-etcd-client --config=/tmp/${HOST1}/kubeadmcfg.yaml
@@ -624,24 +636,31 @@ tree /root
 tree /etc/kubernetes/pki
 
 #Create the static pod manifests
-#각 서버에 "/etc/kubernetes/manifests/etcd.yaml" 파일이 생성됨
 t1vkubeetcd1# kubeadm alpha phase etcd local --config=/tmp/${HOST0}/kubeadmcfg.yaml
 t1vkubeetcd2# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
 t1vkubeetcd3# kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
 
-#각 서버에 파일들을 보면 호스트이름을 뺀 나머지는 모두 같음. 리슨포트는 127.0.0.1로 되어있음
+#"/etc/kubernetes/manifests/etcd.yaml" 파일이 생성됨
+#이 때 리슨포트는 127.0.0.1로 되어있으나 ALL IP(0.0.0.0)로 변경함
 cat /etc/kubernetes/manifests/etcd.yaml
 
-#가이드에는 없지만 리슨포트를 127.0.0.1에서 0.0.0.0(ALL IP)로 변경함
-#sed -i "s/127.0.0.1/0.0.0.0/g" /etc/kubernetes/manifests/etcd.yaml
-#했더니만 certification이 127.0.0.1에 valid하여 오류가 발생함;;;
+sed -i "s/127.0.0.1/0.0.0.0/g" /etc/kubernetes/manifests/etcd.yaml
+cat /etc/kubernetes/manifests/etcd.yaml
 
 
-#리슨포트 변경 반영 후 확인
+#maiefests pod 실행
+systemctl daemon-reload
+systemctl restart kubelet
+systemctl status kubelet
+
 systemctl restart docker
-systemctl restart kubulet
+systemctl status docker
 
-docker ps
+#수십 초 후 올라옴(이미지 다운로드 시간 소요)
+docker psㄴ
+netstat -nlp
+
+
 
 #Check the cluster health
 docker run --rm -it \
@@ -650,10 +669,114 @@ docker run --rm -it \
 --cert-file /etc/kubernetes/pki/etcd/peer.crt \
 --key-file /etc/kubernetes/pki/etcd/peer.key \
 --ca-file /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://0.0.0.0:2379 cluster-health
+
+
+
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
+--cert-file /etc/kubernetes/pki/etcd/peer.crt \
+--key-file /etc/kubernetes/pki/etcd/peer.key \
+--ca-file /etc/kubernetes/pki/etcd/ca.crt \
 --endpoints https://127.0.0.1:2379 cluster-health
 
+
+
  
+ ###########################
+ 이제는 master 서버 3대 설정
+ ###########################
  
+#먼저 etcd서버에서 생성한 ca를 master 서버에 복사한다.
+
+
+USER=root 
+CONTROL_PLANE_HOSTS="10.10.64.61 10.10.64.62 10.10.64.63"
+for host in $CONTROL_PLANE_HOSTS; do
+    scp /etc/kubernetes/pki/etcd/ca.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/apiserver-etcd-client.crt "${USER}"@$host:
+    scp /etc/kubernetes/pki/apiserver-etcd-client.key "${USER}"@$host:
+done
+
+
+#master서버에 폴더 생성해둠
+mkdir -p /etc/kubernetes/pki/etcd/
+
+#그리고 복사
+USER=root 
+CONTROL_PLANE_HOSTS="10.10.64.61 10.10.64.62 10.10.64.63"
+for host in $CONTROL_PLANE_HOSTS; do
+    scp /etc/kubernetes/pki/etcd/ca.crt "${USER}"@$host:/etc/kubernetes/pki/etcd/ca.crt
+    scp /etc/kubernetes/pki/apiserver-etcd-client.crt "${USER}"@$host:/etc/kubernetes/pki/apiserver-etcd-client.crt
+    scp /etc/kubernetes/pki/apiserver-etcd-client.key "${USER}"@$host:/etc/kubernetes/pki/apiserver-etcd-client.key
+done
+
+
+#MASTET 1번서버 
+
+vi /root/kubeadm-config.yaml
+------------------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.0
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+    external:
+        endpoints:
+        - https://10.10.64.96:2379
+        - https://10.10.64.97:2379
+        - https://10.10.64.98:2379
+        caFile: /etc/kubernetes/pki/etcd/ca.crt
+        certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+        keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
+networking:
+    # This CIDR is a calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+------------------------------------------------------------------------------------------------
+
+kubeadm init --config kubeadm-config.yaml
+
+#MASTET 1번서버 (이전방식)
+
+#v1.11은 external etcd를 3.2.17 버전을 지원함
+#v1.10에서는 etcd버전이 3.1.12버전임
+
+
+cat << EOF >> /etc/hosts
+10.10.64.60  kubeapi.homeplusnet.co.kr
+EOF
+
+ping kubeapi.homeplusnet.co.kr
+
+vi /root/kubeadm-config.yaml
+------------------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.0
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+    external:
+        endpoints:
+        - https://10.10.64.96:2379
+        - https://10.10.64.97:2379
+        - https://10.10.64.98:2379
+        caFile: /etc/kubernetes/pki/etcd/ca.pem
+        certFile: /etc/kubernetes/pki/etcd/client.pem
+        keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+  
+networking:
+    # This CIDR is a calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+------------------------------------------------------------------------------------------------
+
+kubeadm init --config kubeadm-config.yaml
 
 
 
@@ -663,7 +786,4 @@ docker run --rm -it \
 
 
 
-
-
-
-
+------------------------------------------------------------------------------------------------
