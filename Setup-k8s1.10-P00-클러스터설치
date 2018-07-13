@@ -233,9 +233,12 @@ cat ~/.ssh/id_rsa.pub
 #1번 서버 authorized_keys에 2번서버,3번서버의 public key 넣어줌
 vi ~/.ssh/authorized_keys
 
-#2번과 3번서버에 1번서버의 root CA를 넣어줌
+#2번과 3번서버에서 1번서버의 root CA를 가지고 올 디렉토리 생성 및 파일 1개 가져오기
 mkdir -p /etc/kubernetes/pki/etcd
 cd /etc/kubernetes/pki/etcd
+scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem .
+
+#2번과 3번서버에서 1번서버의 root CA 관련 파일 전체 가져옴
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca.pem .
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca-key.pem .
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client.pem .
@@ -243,7 +246,7 @@ scp root@10.10.64.96:/etc/kubernetes/pki/etcd/client-key.pem .
 scp root@10.10.64.96:/etc/kubernetes/pki/etcd/ca-config.json .
 
 #3대 모두에서 실행
-cfssl print-defaults csr > config.json
+cfssl print-defaults csr > /etc/kubernetes/pki/etcd/config.json
 sed -i '0,/CN/{s/example\.net/'"$PEER_NAME"'/}' config.json
 sed -i 's/www\.example\.net/'"$PRIVATE_IP"'/' config.json
 sed -i 's/example\.net/'"$PEER_NAME"'/' config.json
