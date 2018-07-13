@@ -160,6 +160,7 @@ systemctl status kubelet
 #kube-apiserver(Listen 6443)로드발랜싱을 위한 tcp 포워딩 로드발란서
 
 #haproxy 설치
+#아래 설정이어야 lb가 제대로 동작
 
 cd /etc/haproxy
 mv haproxy.cfg haproxy.cfg.bak
@@ -481,6 +482,55 @@ kubectl get pod --all-namespaces
 ################################################################
 ################################################################
 ################################################################
+
+
+################################################################
+################################################################
+################################################################
+Installing a pod network add-on
+################################################################
+################################################################
+################################################################
+
+#master1번 서버에서만 실행
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+kubectl get pods --namespace=kube-system
+ 
+#>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
+#되어야 하는데 ERROR가 발생함;;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
