@@ -467,35 +467,6 @@ kubectl get pod --all-namespaces
 
 #core-dns는 pending 상태이나 CNI 설치 후에는 running
 
-################################################################
-################################################################
-################################################################
-###       END (master + etcd)
-################################################################
-################################################################
-################################################################
-
-
-################################################################
-################################################################
-################################################################
-Installing a pod network add-on
-################################################################
-################################################################
-################################################################
-
-#master1번 서버에서만 실행
-kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
-kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
- 
-kubectl get pods --namespace=kube-system
- 
-#>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
-#이제는 노드들도 모두 ready 상태가 됨
-#만약 coredns error 상태면 마스터 리붓함(뭔가 설치과정이 잘도쇧ㅁ)
-
-
-
 
 
 
@@ -528,6 +499,80 @@ cat << EOF >> /etc/hosts
 10.10.64.62  t1vkubeadm2 
 10.10.64.63  t1vkubeadm3 kubeapi.homeplusnet.co.kr
 EOF
+
+
+
+
+################################################################
+################################################################
+################################################################
+###       END (master + etcd)
+################################################################
+################################################################
+################################################################
+
+
+########################
+WOKRER NODE 설치
+########################
+
+docker, kubelet 등 설치
+
+vi /etc/fstab
+
+cat << EOF >> /etc/hosts
+10.10.64.99  kubeapi.homeplusnet.co.kr
+EOF
+
+
+
+#앞서 master 서버 설치 시 나온 명령어 실행
+kubeadm join kubeapi.homeplusnet.co.kr:6443 --token ******* --discovery-token-ca-cert-hash sha256:*******************
+
+#만약, create a new valid toke 에러가 나오면 마스터에서 "kubeadm token create" 후 나온 토큰을
+#위 명령어 "--token" 뒤에 넣어서 실행하면됨
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################
+################################################################
+################################################################
+Installing a pod network add-on
+################################################################
+################################################################
+################################################################
+
+#master1번 서버에서만 실행
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+ 
+kubectl get pods --namespace=kube-system
+ 
+#>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
+#이제는 노드들도 모두 ready 상태가 됨
+#만약 coredns error 상태면 마스터 리붓함(뭔가 설치과정이 잘도쇧ㅁ)
+
+
+
+
+
+
 
 
 
