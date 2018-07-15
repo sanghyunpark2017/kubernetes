@@ -1,9 +1,6 @@
 
-
-#api서버 L4로 바라보게 할 때 제대로 포인팅 되지 않으면 문제되고
-#HAPROXY 설정이 중요하고
-#kubelet 중지하고 설치하는 과정도 중요함
-
+#설치 할 때는 API서버 L4 대신 staic server를 바라보게 하여 진행 권장
+#manifast 설치 하기 전에 kubelet 중지하고 진행
 
 ##############################
 Before you begin
