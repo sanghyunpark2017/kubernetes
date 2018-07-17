@@ -541,23 +541,6 @@ kubeadm join kubeapi.homeplusnet.co.kr:6443 --token ******* --discovery-token-ca
 #위 명령어 "--token" 뒤에 넣어서 실행하면됨
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ################################################################
 ################################################################
 ################################################################
@@ -572,9 +555,62 @@ kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/
  
 kubectl get pods --namespace=kube-system
  
-#>>>>> 마스터 서버들의 calic pod 생성된 후에 coredns pod가 running 전환
-#이제는 노드들도 모두 ready 상태가 됨
-#만약 coredns error 상태면 마스터 리붓함(뭔가 설치과정이 잘도쇧ㅁ)
+#calico-node-**** POD가 master/worker node 수 만큼 생성됨
+#그 후 coredns pod 2개도 running 상태로 변경됨
+#만약 coredns가 여전히 error 상태라면 master 서버 롤링 리붓하면 정상화됨 (정상적인 진행이라면 이런 일은 없어야 함)
+
+
+##########################################
+#대시보드 Heapster, influxdb & grafana 설치
+##########################################
+
+yum install -y git
+mkdir -p  /root/k8s-addon
+cd /root/k8s-addon
+git clone https://github.com/DragOnMe/kubernetes-mod-skydns-dashboard-mon.git
+
+cd /root/k8s-addon/kubernetes-mod-skydns-dashboard-mon
+kubectl create -f Dashboard/dashboard-controller.yaml
+kubectl create -f Dashboard/dashboard-service.yaml
+
+#deployment, pod, svc 3개가 생성됨
+kubectl get pods -n=kube-system -o=wide
+kubectl get deployment -n=kube-system  -o=wide
+kubectl get svc -n=kube-system -o=wide
+
+#서비스 속성을 보면 Cluster IP로 되어 있어 외부에서 대시보드 호출 할 수 없음
+kubectl describe svc kubernetes-dashboard -n=kube-system
+--------------------------------------------------------------------------------------
+Name:              kubernetes-dashboard
+Namespace:         kube-system
+Labels:            k8s-app=kubernetes-dashboard
+                   kubernetes.io/cluster-service=true
+Annotations:       <none>
+Selector:          k8s-app=kubernetes-dashboard
+Type:              ClusterIP
+IP:                10.102.49.8
+Port:              <unset>  80/TCP
+TargetPort:        9090/TCP
+Endpoints:         192.168.5.3:9090
+Session Affinity:  None
+Events:            <none>
+--------------------------------------------------------------------------------------
+
+#그래서 이 것은 삭제하고
+kubectl delete svc kubernetes-dashboard -n=kube-system
+
+#대시보드 deploymemt를 가지고 Node Port의 서비스를 새로 만들고
+#Node Port가 default 30000-32767 사이에서 랜덤하게 바인딩 되어
+kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
+
+#Node Port가 무엇인지 확인해서
+kubectl get svc -n=kube-system -o=wide
+
+#브라우저에서 접속하면 되는데, 첫화면에서 서비스계정 에러가 나옴
+"replicationcontrollers is forbidden: User "system:serviceaccount:kube-system:default" cannot list replicationcontrollers in the namespace "default""
+
+#서비스계정을 default 네임스페이스에 생성하고 브라우저에 가서 Refresh(F5)하면 정상 표시됨
+kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
 
 
 
@@ -626,15 +662,18 @@ kubectl get pods --namespace=kube-system
 
 
 
-
-
+##external etcd는 설치 실패함(2018년 7월 초)
+-etcd listen port가 기본적으로 LOOPBACK address임
+-이 것을 설정을 변경하여 real ip로 변경할수는 있음
+-그러나 인증서가 loopback address로 발급되어 real ip로는 app통신이 안됨
+-원인 및 해결 시도는 하지 않음
 
 
 
 ################################################################
 ################################################################
 ################################################################
-### START(master와 etcd를 따로 실행)
+### START(master와 etcd를 따로 실행) 
 ################################################################
 ################################################################
 ################################################################
