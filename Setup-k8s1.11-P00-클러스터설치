@@ -13,8 +13,16 @@ Before you begin
 -sudo privileges on all machines
 -그리고 External Etcd 3대
 
-
 #사전작업은 master 3대, worker 3대, etcd 3대 모두 실행한다.
+
+10.10.64.61 master1
+10.10.64.62 master2
+10.10.64.63 master3
+10.10.64.64 worker1
+10.10.64.65 worker2
+10.10.64.66 worker3
+10.10.64.99 L4
+
 
 ################################
 ## 사전작업 - 서버설정
