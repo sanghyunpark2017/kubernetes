@@ -264,14 +264,12 @@ networking:
 cd ~
 kubeadm init --config kubeadm-config.yaml
 
-
-
-# 성공적인 init 이후
+#init이 끝나면 화면에 나오는 유저환경 적용하고, token 정보 백업(worker 붙일 때 사용
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-#coredns 2개를 제외한 나머지 5개 POD running이면 다음 진행 (coredns는 CNI 설치 후 running됨)
+#coredns 2개를 제외한 나머지 5개 POD running 되고 있고, restart 카운트가 0 이면 다음 진행 (coredns는 CNI 설치 후 running됨)
 kubectl get nodes
 kubectl get pods --namespace=kube-system -o=wide
 
@@ -339,7 +337,7 @@ mv /${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
 mv /${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
 mv /${USER}/admin.conf /etc/kubernetes/admin.conf
 
-## 중요!!! 이 명령어가 매우 중요함!!!!!!!!!! (도큐에 없음 도뀨!!)
+##2번 서버 조인하고, 시스템POD 설치
 systemctl stop kubelet
 
 kubeadm alpha phase certs all --config kubeadm-config.yaml
@@ -374,6 +372,8 @@ kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
 
 #Deploy the control plane components and mark the node as a master:
+#중요!!!! 2번 마스터로 이동
+#중요!!!! 2번 마스터로 이동
 kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
