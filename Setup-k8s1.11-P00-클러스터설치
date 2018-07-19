@@ -34,18 +34,17 @@ swapoff -a
 systemctl disable firewalld
 systemctl stop firewalld
 
-#FQDN은 DNS에 넣어주고(실제 L4권장), 각 마스터서버들은 가기 자신을 바라보게 한다(중요) 
-#10.10.64.99  kubeapi.homeplusnet.co.kr
+#API Server : L4(10.10.64.99), FQDN(kubeapi.homeplusnet.co.kr)
 
 
-#stacked 방식으로 마스터 1대씩 붙일 때는 L4를 쓰고,
-#설치가 끝나서 자기 자신이 MASTER가 되면 kubeapi를 자기 자신으로 바라보게 하는 것이 유리함(뒤에 조정됨)
-
+#설치할 때는 MASTER서버 각자 자기 자신을 바라보게함(모든 설치가 끝나면 L4로 조정)
 cat << EOF >> /etc/hosts
 10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
 10.10.64.62  t1vkubeadm2
 10.10.64.63  t1vkubeadm3
 EOF
+
+
 
 
 #SELINUX 변경(enforcing -> disabled)
@@ -477,37 +476,20 @@ kubectl get pod --all-namespaces
 
 
 
-
-이제 각 마스터의 FQDN을 자기 자신을 바라보게 함
-
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 
-
+#이제 각 마스터의 FQDN을 L4주소로 지정
+#만약 자기 자신을 바라보게 놔둘 경우 서버 리붓 후 api server 오류(authorize 날 수 있으니 꼭 변경한다
 
 #master 1번
-cat << EOF >> /etc/hosts
+vi /etc/hosts
 10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
 10.10.64.62  t1vkubeadm2
 10.10.64.63  t1vkubeadm3
-EOF
-
-#master 2번
-cat << EOF >> /etc/hosts
-10.10.64.61  t1vkubeadm1 
-10.10.64.62  t1vkubeadm2 kubeapi.homeplusnet.co.kr
-10.10.64.63  t1vkubeadm3
-EOF
-
-#master 3번
-cat << EOF >> /etc/hosts
-10.10.64.61  t1vkubeadm1 
-10.10.64.62  t1vkubeadm2 
-10.10.64.63  t1vkubeadm3 kubeapi.homeplusnet.co.kr
-EOF
-
+10.10.64.99   kubeapi.homeplusnet.co.kr
 
 
 
@@ -531,8 +513,6 @@ vi /etc/fstab
 cat << EOF >> /etc/hosts
 10.10.64.99  kubeapi.homeplusnet.co.kr
 EOF
-
-
 
 #앞서 master 서버 설치 시 나온 명령어 실행
 kubeadm join kubeapi.homeplusnet.co.kr:6443 --token ******* --discovery-token-ca-cert-hash sha256:*******************
