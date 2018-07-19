@@ -39,9 +39,10 @@ systemctl stop firewalld
 
 #설치할 때는 MASTER서버 각자 자기 자신을 바라보게함(모든 설치가 끝나면 L4로 조정)
 cat << EOF >> /etc/hosts
-10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
+10.10.64.61  t1vkubeadm1
 10.10.64.62  t1vkubeadm2
 10.10.64.63  t1vkubeadm3
+10.1.64.99   kubeapi.homeplusnet.co.kr
 EOF
 
 
