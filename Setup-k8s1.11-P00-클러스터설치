@@ -42,7 +42,7 @@ cat << EOF >> /etc/hosts
 10.10.64.61  t1vkubeadm1
 10.10.64.62  t1vkubeadm2
 10.10.64.63  t1vkubeadm3
-10.1.64.99   kubeapi.homeplusnet.co.kr
+10.10.64.99   kubeapi.homeplusnet.co.kr
 EOF
 
 
@@ -54,17 +54,6 @@ cat  /etc/selinux/config
 
 
 shutdown -r now
-
-
-################################
-## 사전작업 - SSH 
-################################
-
-ssh-keygen -t rsa
-
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm1
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm2
-ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm3
 
 
 
@@ -124,27 +113,20 @@ sysctl --system
 systemctl status kubelet
 
 
+#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상
 
-
-#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상되는 것으로 지금은 그냥 무시
-
+#>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
 
 ###cgroup 드라이버를 도커와 kube간에 일치 시켜줘야함
-#yum으로 설치하면 systemd, docker ce로 설치하면 cgroup 임. 
 #v1.11버전에서는 자동으로 맞춰주므로 PASS
 docker info | grep -i cgroup
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 
 #만약 systemd가 아니고 cgroupfs인 경우
 #sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
-
-systemctl daemon-reload
-systemctl restart kubelet
-
-systemctl status kubelet
-
-#>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
-
+#systemctl daemon-reload
+#systemctl restart kubelet
+#systemctl status kubelet
 
 ################################################################
 ## 사전작업 - master 3대 앞에 로드발랜서 구성 (HAPROXY 서버 1대)
@@ -265,17 +247,38 @@ networking:
 cd ~
 kubeadm init --config kubeadm-config.yaml
 
-#init이 끝나면 화면에 나오는 유저환경 적용하고, token 정보 백업(worker 붙일 때 사용
+#설치과정 로그 확인 
+tail -f /var/log/messages
+
+#설치 후 적용(뒤에 마스터서버 추가 될 떄 마다 적용)
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-#coredns 2개를 제외한 나머지 5개 POD running 되고 있고, restart 카운트가 0 이면 다음 진행 (coredns는 CNI 설치 후 running됨)
+#token 정보는 별도 저장해 둔다(worker 노드 붙일 떄 사용)
+
+#노드와 POD 상태 확인
 kubectl get nodes
 kubectl get pods --namespace=kube-system -o=wide
 
+#coredns 2개는 pending 상태로 뒤에 CNI 설치후에야 running 됨
+#나머지 5개는 running 상태이어야 하고 AGE 1분 넘게 restart 카운트가 0이면 다음 진행
+
+
 
 #init 이후에 master 1번 서버에 생성된 파일들을 다른 master서버로 복사
+
+################################
+##  SSH 
+################################
+
+ssh-keygen -t rsa
+
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm1
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm2
+ssh-copy-id -i ~/.ssh/id_rsa.pub root@t1vkubeadm3
+
+
 
 USER=root # customizable
 CONTROL_PLANE_IPS="10.10.64.62 10.10.64.63"
@@ -338,23 +341,24 @@ mv /${USER}/etcd-ca.crt /etc/kubernetes/pki/etcd/ca.crt
 mv /${USER}/etcd-ca.key /etc/kubernetes/pki/etcd/ca.key
 mv /${USER}/admin.conf /etc/kubernetes/admin.conf
 
-##2번 서버 조인하고, 시스템POD 설치
+##kubelet 서비스 중지하고
 systemctl stop kubelet
 
+#설정파일 생성 후
 kubeadm alpha phase certs all --config kubeadm-config.yaml
 kubeadm alpha phase kubelet config write-to-disk --config kubeadm-config.yaml
 kubeadm alpha phase kubelet write-env-file --config kubeadm-config.yaml
 kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
 
+#kubelet 시작
 systemctl start kubelet
 systemctl status kubelet
 
 
 #master 1번 서버에서 node와 POD 확인
-#node는 추가되고 role은 none 상태임, proxy 1개가 추가됨
+#node는 추가되고 role은 none 상태임, 2번 마스터버의 proxy 1개가 추가됨
 kubectl get nodes -o=wide
 kubectl get pods --namespace=kube-system -o=wide
-
 
 #노드를 etcd cluster에 추가
 #중요!!!! 2번 마스터로 이동
@@ -364,13 +368,12 @@ CP0_HOSTNAME=t1vkubeadm1
 CP1_IP=10.10.64.62
 CP1_HOSTNAME=t1vkubeadm2
 
-#중요! 2개 명령어를 동시에 실행함.
+#실행
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP1_HOSTNAME} https://${CP1_IP}:2380
 kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
-#>>>>> etcd cluster add로 인해 master 1번에서 kubectl 수십 초에서 수분 동안 동작하지 않음
-#>>>>> master 2번의 etcd pod 1개가 추가됨을 확인
-
+#etcd cluster 처음 구성이되며 수십 초에서 수분 동안 동작하지 않을 수 있음
+#2번 마스터의 etcd 1개가 추가되고 AGE 1분 이상 지켜 본 후 다음 진행
 
 #Deploy the control plane components and mark the node as a master:
 #중요!!!! 2번 마스터로 이동
@@ -379,8 +382,8 @@ kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
 
-#>>>>> master2번의 api, controller, scheduler pod 등 총 3개가 추가로 running됨
-
+#그럼 이제 2번 마스터의 api, controller, scheduler pod 등 총 3개가 추가로 running되고
+#API 서버는 이제 L4에 의해 라운드로빈 됨
 
 
 
@@ -445,9 +448,11 @@ kubeadm alpha phase kubeconfig kubelet --config kubeadm-config.yaml
 systemctl start kubelet
 systemctl status kubelet
 
-#>>>>> 3번 호스트의 proxy pod가 생성됨
+#3번 호스트의 proxy pod가 생성됨 
 
 #Run the commands to add the node to the etcd cluster:
+#3번 호스트로 이동
+#3번 호스트로 이동
 CP0_IP=10.10.64.61
 CP0_HOSTNAME=t1vkubeadm1
 CP2_IP=10.10.64.63
@@ -457,42 +462,30 @@ CP2_HOSTNAME=t1vkubeadm3
 KUBECONFIG=/etc/kubernetes/admin.conf kubectl exec -n kube-system etcd-${CP0_HOSTNAME} -- etcdctl --ca-file /etc/kubernetes/pki/etcd/ca.crt --cert-file /etc/kubernetes/pki/etcd/peer.crt --key-file /etc/kubernetes/pki/etcd/peer.key --endpoints=https://${CP0_IP}:2379 member add ${CP2_HOSTNAME} https://${CP2_IP}:2380
 kubeadm alpha phase etcd local --config kubeadm-config.yaml
 
-#>>>>> 이제 3번 호스트의 etcd pod가 생성됨
 
-
+#이제 3번 호스트의 etcd pod가 생성되며 AGE 1분 확인
 
 
 #Deploy the control plane components and mark the node as a master:
+#3번 호스트로 이동
+#3번 호스트로 이동
 kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml
 kubeadm alpha phase controlplane all --config kubeadm-config.yaml
 kubeadm alpha phase mark-master --config kubeadm-config.yaml
 
-#>>>>> 3번 호스트의 api, controller, scheduler 3개가 추가로 running됨
 
-#master 1번 서버에서 master 된 것 확인 (아직 rule은 none 상태)
-kubectl get nodes -o=wide  
-kubectl get pod --all-namespaces
-
-#core-dns는 pending 상태이나 CNI 설치 후에는 running
+#3번 호스트의 api, controller, scheduler 3개가 추가로 running됨
 
 
-
+#2번,3번 마스터에 실행하고 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-
-#이제 각 마스터의 FQDN을 L4주소로 지정
-#만약 자기 자신을 바라보게 놔둘 경우 서버 리붓 후 api server 오류(authorize 날 수 있으니 꼭 변경한다
-
-#master 1번
-vi /etc/hosts
-10.10.64.61  t1vkubeadm1 kubeapi.homeplusnet.co.kr
-10.10.64.62  t1vkubeadm2
-10.10.64.63  t1vkubeadm3
-10.10.64.99   kubeapi.homeplusnet.co.kr
-
-
+#마스터서버 모두 노드와  pod 상태 확인
+kubectl get nodes -o=wide  
+kubectl get pod --all-namespaces
+ 
 
 ################################################################
 ################################################################
@@ -502,24 +495,6 @@ vi /etc/hosts
 ################################################################
 ################################################################
 
-
-########################
-WOKRER NODE 설치
-########################
-
-docker, kubelet 등 설치
-
-vi /etc/fstab
-
-cat << EOF >> /etc/hosts
-10.10.64.99  kubeapi.homeplusnet.co.kr
-EOF
-
-#앞서 master 서버 설치 시 나온 명령어 실행
-kubeadm join kubeapi.homeplusnet.co.kr:6443 --token ******* --discovery-token-ca-cert-hash sha256:*******************
-
-#만약, create a new valid toke 에러가 나오면 마스터에서 "kubeadm token create" 후 나온 토큰을
-#위 명령어 "--token" 뒤에 넣어서 실행하면됨
 
 
 ################################################################
@@ -536,16 +511,41 @@ kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/
  
 kubectl get pods --namespace=kube-system
  
-#calico-node-**** POD가 master/worker node 수 만큼 생성됨
-#그 후 coredns pod 2개도 running 상태로 변경됨
-#만약 coredns가 여전히 error 상태라면 master 서버 롤링 리붓하면 정상화됨 (정상적인 진행이라면 이런 일은 없어야 함)
+#calico-node-**** POD가 master 마다 생성되고 그 후에 coredns가 running 됨
+
+#master 1>2>3 순서대로 리붓하면서 NODE와 pod 상태 확인해봄
+#etcd 3대중 2대가 running 이어야 하고 master+etcd 구성이므로 서버 2대는 가동되고 있어야 함
+
+
+#L4가 master 서버 다운을 즉시 감지하지 못한다면 다운된 master서버로 로드밸런싱 될 수 있으며
+#이 때는 명령어 실패 발생하게 됨 (haproxy 감지 타임을 줄이던가 물리 L4로 하던가 조정 필요) 
+
+kubectl get nodes -o wide
+
+kubectl get pods --all-namespaces -o wide
+
+
+
+########################
+WOKRER NODE 설치
+########################
+
+#앞서 master 서버 설치 시 나온 명령어 실행
+kubeadm join kubeapi.homeplusnet.co.kr:6443 --token ******* --discovery-token-ca-cert-hash sha256:*******************
+
+#만약, create a new valid toke 에러가 나오면 마스터에서 "kubeadm token create" 후 나온 토큰을
+#위 명령어 "--token" 뒤에 넣어서 실행하면됨
+
+
 
 
 ##########################################
-#대시보드 Heapster, influxdb & grafana 설치
+#대시보드 
 ##########################################
 
 yum install -y git
+
+
 mkdir -p  /root/k8s-addon
 cd /root/k8s-addon
 git clone https://github.com/DragOnMe/kubernetes-mod-skydns-dashboard-mon.git
@@ -554,7 +554,7 @@ cd /root/k8s-addon/kubernetes-mod-skydns-dashboard-mon
 kubectl create -f Dashboard/dashboard-controller.yaml
 kubectl create -f Dashboard/dashboard-service.yaml
 
-#deployment, pod, svc 3개가 생성됨
+#deployment, pod, svc 각 1개씩 생성됨
 kubectl get pods -n=kube-system -o=wide
 kubectl get deployment -n=kube-system  -o=wide
 kubectl get svc -n=kube-system -o=wide
@@ -584,10 +584,14 @@ kubectl delete svc kubernetes-dashboard -n=kube-system
 #Node Port가 default 30000-32767 사이에서 랜덤하게 바인딩 되어
 kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
 
-#Node Port가 무엇인지 확인해서
+#Node Port가 무엇인지 확인해서 브라우저에 접속함
 kubectl get svc -n=kube-system -o=wide
 
-#브라우저에서 접속하면 되는데, 첫화면에서 서비스계정 에러가 나옴
+#브라우저에서 접속하면
+http://10.10.64.61~63:32xxx
+http://10.10.64.65~67:32xxx
+
+#첫화면에서 서비스계정 에러가 나옴
 "replicationcontrollers is forbidden: User "system:serviceaccount:kube-system:default" cannot list replicationcontrollers in the namespace "default""
 
 #서비스계정을 default 네임스페이스에 생성하고 브라우저에 가서 Refresh(F5)하면 정상 표시됨
