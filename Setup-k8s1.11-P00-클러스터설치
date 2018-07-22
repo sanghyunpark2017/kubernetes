@@ -1,11 +1,17 @@
 
-#설치 할 때는 API서버 L4 대신 staic server를 바라보게 하여 진행 권장
+#[설치]
+#API Server(TCP 6443) L4를 Haproxy로 구성할 시 설정 중요
 #manifast 설치 하기 전에 kubelet 중지하고 진행
+
+#[향후구성 의견]
+#master와 etcd는 독립시키는 것이 권장됨 (상호 셧다운 간섭 최소화)
+#kube최신버전이 etcd최신버전을 요구하기에 etcd 분리구성이 kube업그레이드에 유리하지는 않음
+#인하우스 업글보다는 a세트/b세트 방식이 나을 듯
+
 
 ##############################
 Before you begin
 ##############################
-
 -Three machines that meet kubeadm’s minimum requirements for the masters
 -Three machines that meet kubeadm’s minimum requirements for the workers
 -Full network connectivity between all machines in the cluster (public or private network is fine)
