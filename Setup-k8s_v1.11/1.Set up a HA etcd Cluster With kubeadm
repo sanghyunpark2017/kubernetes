@@ -267,16 +267,54 @@ kubeadm alpha phase etcd local --config=/root/kubeadmcfg.yaml
 systemctl start kubelet
 systemctl status kubelet
 
+###############################
+# etcd cluster healthcheck
+###############################
+#/root 폴더에 healthcheck용 쉘스크립트를 만들어 놓음 (3대 모두)
 
 
-#### 1번 호스트 실행하여 health check
+
+#### 1번 호스트
+
+cat << EOF > /root/healthcheck1.sh
 docker run --rm -it \
 --net host \
 -v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
 --cert-file /etc/kubernetes/pki/etcd/peer.crt \
 --key-file /etc/kubernetes/pki/etcd/peer.key \
 --ca-file /etc/kubernetes/pki/etcd/ca.crt \
---endpoints https://${HOST0}:2379 cluster-health
+--endpoints https://10.10.64.96:2379 cluster-health
+EOF
+
+
+
+#### 2번 호스트
+cat << EOF > /root/healthcheck2.sh
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
+--cert-file /etc/kubernetes/pki/etcd/peer.crt \
+--key-file /etc/kubernetes/pki/etcd/peer.key \
+--ca-file /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://10.10.64.97:2379 cluster-health
+EOF
+
+
+
+#### 3번 호스트
+cat << EOF > /root/healthcheck3.sh
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
+--cert-file /etc/kubernetes/pki/etcd/peer.crt \
+--key-file /etc/kubernetes/pki/etcd/peer.key \
+--ca-file /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://10.10.64.98:2379 cluster-health
+EOF
+
+chmod 755 /root/healthcheck*.sh
+
+
 
 
  
