@@ -100,6 +100,7 @@ cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 ################################################################
 
 ###### 1.Configure the kubelet to be a service manager for etcd.
+#etcd 3대 모두 실행
 
 systemctl stop kubelet
 
@@ -117,6 +118,7 @@ systemctl status kubelet
 
 
 ##### 2.Create configuration files for kubeadm.
+#1번 호스트만 실행 
 
 # Update HOST0, HOST1, and HOST2 with the IPs or resolvable names of your hosts
 export HOST0=10.10.64.96
@@ -265,6 +267,15 @@ systemctl start kubelet
 systemctl status kubelet
 
 
+
+#### 1번 호스트 실행
+docker run --rm -it \
+--net host \
+-v /etc/kubernetes:/etc/kubernetes quay.io/coreos/etcd:v3.2.18 etcdctl \
+--cert-file /etc/kubernetes/pki/etcd/peer.crt \
+--key-file /etc/kubernetes/pki/etcd/peer.key \
+--ca-file /etc/kubernetes/pki/etcd/ca.crt \
+--endpoints https://${HOST0}:2379 cluster-health
 
 
  
