@@ -1,6 +1,45 @@
 
 
 
+##################################################################
+Installing HAProxy on Centos7
+Installed by 2018/06/26 Thu
+(HAProxy version 1.7.8, released 2017/07/07)
+##################################################################
+
+https://www.dreamvps.com/tutorials/installing-haproxy-http-load-balancer-on-centos/
+
+sudo yum info haproxy
+sudo yum install wget gcc pcre-static pcre-devel -y
+
+wget https://www.haproxy.org/download/1.8/src/haproxy-1.8.10.tar.gz -O ~/haproxy.tar.gz
+
+tar xzvf ~/haproxy.tar.gz -C ~/
+cd ~/haproxy-1.8.10
+
+make TARGET=linux2628
+sudo make install
+
+sudo mkdir -p /etc/haproxy
+sudo mkdir -p /run/haproxy
+sudo mkdir -p /var/lib/haproxy 
+sudo touch /var/lib/haproxy/stats
+
+sudo ln -s /usr/local/sbin/haproxy /usr/sbin/haproxy
+sudo cp ~/haproxy-1.8.10/examples/haproxy.init /etc/init.d/haproxy
+
+sudo chmod 755 /etc/init.d/haproxy
+sudo systemctl daemon-reload
+
+sudo useradd -r haproxy
+
+haproxy -v
+
+sudo firewall-cmd --permanent --zone=public --add-service=http
+sudo firewall-cmd --permanent --zone=public --add-port=8181/tcp
+sudo firewall-cmd --reload
+
+
 
 
 
