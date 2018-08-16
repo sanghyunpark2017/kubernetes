@@ -1,0 +1,82 @@
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################
+## 사전작업 - master 3대 앞에 로드발랜서 구성 (HAPROXY 서버 1대)
+################################################################
+
+#kube-apiserver(Listen 6443)로드발랜싱을 위한 tcp 포워딩 로드발란서
+
+#haproxy 설치
+#아래 설정이어야 lb가 제대로 동작
+
+cd /etc/haproxy
+mv haproxy.cfg haproxy.cfg.bak
+
+
+vi /etc/haproxy/haproxy.cfg
+--------------------------------------------------------------------------------------------------
+global
+   log /dev/log local0
+   log /dev/log local1 notice
+   chroot /var/lib/haproxy
+   stats socket /run/haproxy/admin.sock mode 660 level admin
+   stats timeout 30s
+   user haproxy
+   group haproxy
+   daemon
+
+defaults
+   log global
+   mode http
+   option httplog
+   option dontlognull
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+
+frontend k8s-api
+  bind *:6443  
+  mode tcp
+  option tcplog
+  default_backend k8s-api
+
+backend k8s-api
+  mode tcp
+  option tcplog
+  option tcp-check
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+  server t1vkubeadm1 10.10.64.61:6443 check fall 3 rise 2
+  server t1vkubeadm2 10.10.64.62:6443 check fall 3 rise 2
+  server t1vkubeadm3 10.10.64.63:6443 check fall 3 rise 2
+--------------------------------------------------------------------------------------------------
+
+
+systemctl enable haproxy.service
+systemctl restart haproxy.service
+systemctl status haproxy.service
+
+ 
+firewall-cmd --get-default-zone
+
+firewall-cmd --permanent --zone=public --add-port=6443/tcp
+
+firewall-cmd --reload
+firewall-cmd --list-ports
+
+#master에서
+
+yum install -v nc
+
+nc -v kubeapi.homeplusnet.co.kr 6443
+>>현재는 refuse 나면 ok
