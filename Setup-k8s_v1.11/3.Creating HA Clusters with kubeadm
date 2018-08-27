@@ -1,5 +1,7 @@
 
-설치가이드 문서 하단 "External etcd" 참고
+#kubernetes 홈페이지 설치가이드 문서 하단 "External etcd" 부문
+#master 3대의 클러스터로 구성하며, worker설치는 다음 단계에서 진행함
+
 
 
 ################################
