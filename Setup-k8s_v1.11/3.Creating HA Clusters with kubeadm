@@ -106,4 +106,55 @@ cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 #systemctl restart kubelet
 #systemctl status kubelet
 
+################################################################
+## 마스터서버 전체 ssh 설정
+################################################################
+
+
+
+
+################################################################
+## 1번 마스터 서버 
+################################################################
+
+vi /root/kubeadm-config.yaml
+------------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.1
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+  local:
+    extraArgs:
+      listen-client-urls: "https://127.0.0.1:2379,https://CP0_IP:2379"
+      advertise-client-urls: "https://CP0_IP:2379"
+      listen-peer-urls: "https://CP0_IP:2380"
+      initial-advertise-peer-urls: "https://CP0_IP:2380"
+      initial-cluster: "CP0_HOSTNAME=https://CP0_IP:2380"
+    serverCertSANs:
+      - CP0_HOSTNAME
+      - CP0_IP
+    peerCertSANs:
+      - CP0_HOSTNAME
+      - CP0_IP
+networking:
+    # This CIDR is a Calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+
+------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
 
