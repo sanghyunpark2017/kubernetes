@@ -1,1 +1,109 @@
 
+
+
+################################
+## 사전작업 - 서버설정
+################################
+vi /etc/fstab
+
+swapoff -a
+
+systemctl disable firewalld
+systemctl stop firewalld
+
+#API Server : L4(10.10.64.99), FQDN(kubeapi.homeplusnet.co.kr)
+
+
+#설치할 때는 MASTER서버 각자 자기 자신을 바라보게함(모든 설치가 끝나면 L4로 조정)
+cat << EOF >> /etc/hosts
+10.10.64.61  t1vkubeadm1
+10.10.64.62  t1vkubeadm2
+10.10.64.63  t1vkubeadm3
+10.10.64.64  t1vkubework1
+10.10.64.65  t1vkubework2
+10.10.64.66  t1vkubework3
+10.10.64.99  kubeapi.homeplusnet.co.kr
+EOF
+
+
+#SELINUX 변경(enforcing -> disabled)
+sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+cat  /etc/selinux/config
+
+shutdown -r now
+
+
+################################################################
+## 사전작업 - 도커설치
+################################################################
+
+###Installing Docker
+#Docker Version 17.03 is recommended. Versions 17.06+ might work
+
+sudo yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+
+sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+
+yum list docker-ce --showduplicates | sort -r
+
+yum install -y --setopt=obsoletes=0 \
+  docker-ce-17.03.1.ce-1.el7.centos \
+  docker-ce-selinux-17.03.1.ce-1.el7.centos
+
+systemctl enable docker && systemctl start docker
+systemctl status docker
+
+docker --version
+
+
+
+#Docker version 17.03.1-ce, build c6d412e
+
+################################################################
+## 사전작업 - kubelet kubeadm kubectl 설치
+################################################################
+
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+setenforce 0
+
+yum install -y kubelet kubeadm kubectl
+systemctl enable kubelet && systemctl start kubelet
+
+cat <<EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+
+systemctl status kubelet
+
+
+#kubelet 수초 간격으로 재시작&오류가 발생하는데, 나중에 kubeadm init 이후에는 정상
+
+#>>>>>>>> master 3대, worker 3대 모두 설치 후 다음 단계 진행
+
+###cgroup 드라이버를 도커와 kube간에 일치 시켜줘야함
+#v1.11버전에서는 자동으로 맞춰주므로 PASS
+docker info | grep -i cgroup
+cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+#만약 systemd가 아니고 cgroupfs인 경우
+#sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+#systemctl daemon-reload
+#systemctl restart kubelet
+#systemctl status kubelet
+
+
