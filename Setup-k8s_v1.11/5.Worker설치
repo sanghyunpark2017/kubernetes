@@ -9,5 +9,16 @@ kubectl get nodes -o wide
 
 
 
+##############################################
+# WORKER 노드 오프라인 REMOVE
+##############################################
+
+#파일 또는 디렉토리 삭제
+/var/lib/kubelet/config.yaml
+/var/lib/kubelet/kubeadm-flags.env
+/var/run/dockershim.sock
+
+
+
 
 
