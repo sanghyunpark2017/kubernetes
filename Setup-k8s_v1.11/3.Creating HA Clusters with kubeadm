@@ -151,7 +151,7 @@ vi /root/kubeadm-config.yaml
 --------------------------------------------------------------------------------
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
-kubernetesVersion: v1.11.1
+kubernetesVersion: v1.11.2
 apiServerCertSANs:
 - "kubeapi.homeplusnet.co.kr"
 api:
@@ -182,15 +182,78 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl get nodes
 kubectl get pods --all-namespaces
 
+#1번 서버의 파일을 나머지 master 서버로 복사
+
+USER=root
+CONTROL_PLANE_IPS="10.10.64.62 10.10.64.63"
+for host in ${CONTROL_PLANE_IPS}; do
+    scp /etc/kubernetes/pki/ca.crt "${USER}"@$host:/etc/kubernetes/pki/ca.crt
+    scp /etc/kubernetes/pki/ca.key "${USER}"@$host:/etc/kubernetes/pki/ca.key
+    scp /etc/kubernetes/pki/sa.key "${USER}"@$host:/etc/kubernetes/pki/sa.key
+    scp /etc/kubernetes/pki/sa.pub "${USER}"@$host:/etc/kubernetes/pki/sa.pub
+    scp /etc/kubernetes/pki/front-proxy-ca.crt "${USER}"@$host:/etc/kubernetes/pki/front-proxy-ca.crt
+    scp /etc/kubernetes/pki/front-proxy-ca.key "${USER}"@$host:/etc/kubernetes/pki/front-proxy-ca.key
+done
 
 
 
 
+################################################################
+## 나머지 master서버 설치
+################################################################
+#master서버 순차적으로 설치한다
+
+#1 필요한 파일 있는지 확인
+ll /etc/kubernetes/pki/apiserver-etcd-client.crt
+ll /etc/kubernetes/pki/apiserver-etcd-client.key
+ll /etc/kubernetes/pki/ca.crt
+ll /etc/kubernetes/pki/ca.key
+ll /etc/kubernetes/pki/front-proxy-ca.crt
+ll /etc/kubernetes/pki/front-proxy-ca.key
+ll /etc/kubernetes/pki/sa.key
+ll /etc/kubernetes/pki/sa.pub
+ll /etc/kubernetes/pki/etcd/ca.crt
+
+#2 설치파일은 1번 서버와 동일
+vi /root/kubeadm-config.yaml
+--------------------------------------------------------------------------------
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+kubernetesVersion: v1.11.2
+apiServerCertSANs:
+- "kubeapi.homeplusnet.co.kr"
+api:
+    controlPlaneEndpoint: "kubeapi.homeplusnet.co.kr:6443"
+etcd:
+    external:
+        endpoints:
+        - https://10.10.64.96:2379
+        - https://10.10.64.97:2379
+        - https://10.10.64.98:2379
+        caFile: /etc/kubernetes/pki/etcd/ca.crt
+        certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+        keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
+networking:
+    # This CIDR is a calico default. Substitute or remove for your CNI provider.
+    podSubnet: "192.168.0.0/16"
+--------------------------------------------------------------------------------
+
+cd ~
+kubeadm init --config kubeadm-config.yaml
+
+#3 init 이후 환경설정(필수)
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+#4 설치된 master 서버에서 확인
+kubectl get nodes
+kubectl get pod --all-namespaces
+
+#모든 pod가 running 상태이면 다음 master 설치 진행(단, coredns 2개는 CNI 설치후에야 RUNNNING됨)
 
 
 
-
-
-
+#현재까지 master 3대, etcd 3대 각 클러스터로 설치 완료
 
 
