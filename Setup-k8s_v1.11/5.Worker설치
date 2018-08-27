@@ -3,7 +3,7 @@
 
 #master서버 init 이후 나온 "kubeadm joni ~~~ " 명령어 입력하면 조인되며
 #master서버에서 조인된 노드를 확인 할 수 있음
-#worker 노드 마다의 proxy와 calico가 1개씩 생성됨
+#worker 노드 마다의 proxy와 calico가 1개씩 생성되며, 이 컨테이너 설치가 완료되면 서버 상태가 Ready로 바뀜
 
 kubectl get nodes -o wide
 
