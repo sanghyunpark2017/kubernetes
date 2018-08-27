@@ -1,0 +1,59 @@
+
+##########################################
+#대시보드 
+##########################################
+
+yum install -y git
+
+
+mkdir -p  /root/k8s-addon
+cd /root/k8s-addon
+git clone https://github.com/DragOnMe/kubernetes-mod-skydns-dashboard-mon.git
+
+cd /root/k8s-addon/kubernetes-mod-skydns-dashboard-mon
+kubectl create -f Dashboard/dashboard-controller.yaml
+kubectl create -f Dashboard/dashboard-service.yaml
+
+#deployment, pod, svc 각 1개씩 생성됨
+kubectl get pods -n=kube-system -o=wide
+kubectl get deployment -n=kube-system  -o=wide
+kubectl get svc -n=kube-system -o=wide
+
+#서비스 속성을 보면 Cluster IP로 되어 있어 외부에서 대시보드 호출 할 수 없음
+kubectl describe svc kubernetes-dashboard -n=kube-system
+--------------------------------------------------------------------------------------
+Name:              kubernetes-dashboard
+Namespace:         kube-system
+Labels:            k8s-app=kubernetes-dashboard
+                   kubernetes.io/cluster-service=true
+Annotations:       <none>
+Selector:          k8s-app=kubernetes-dashboard
+Type:              ClusterIP
+IP:                10.102.49.8
+Port:              <unset>  80/TCP
+TargetPort:        9090/TCP
+Endpoints:         192.168.5.3:9090
+Session Affinity:  None
+Events:            <none>
+--------------------------------------------------------------------------------------
+
+#그래서 이 것은 삭제하고
+kubectl delete svc kubernetes-dashboard -n=kube-system
+
+#대시보드 deploymemt를 가지고 Node Port의 서비스를 새로 만들고
+#Node Port가 default 30000-32767 사이에서 랜덤하게 바인딩 되어
+kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
+
+#Node Port가 무엇인지 확인해서 브라우저에 접속함
+kubectl get svc -n=kube-system -o=wide
+
+#브라우저에서 접속하면
+http://10.10.64.61~63:32xxx
+http://10.10.64.65~67:32xxx
+
+#첫화면에서 서비스계정 에러가 나옴
+"replicationcontrollers is forbidden: User "system:serviceaccount:kube-system:default" cannot list replicationcontrollers in the namespace "default""
+
+#서비스계정을 default 네임스페이스에 생성하고 브라우저에 가서 Refresh(F5)하면 정상 표시됨
+kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
+
