@@ -41,7 +41,7 @@ Events:            <none>
 kubectl delete svc kubernetes-dashboard -n=kube-system
 
 #대시보드 deploymemt를 가지고 Node Port의 서비스를 새로 만들고
-#Node Port가 default 30000-32767 사이에서 랜덤하게 바인딩 되어
+#Node Port가 default 30000-32767 사이에서 랜덤하게 바인딩 하게 한 후
 kubectl -n kube-system expose deployment kubernetes-dashboard --name kubernetes-dashboard-nodeport --type=NodePort
 
 #Node Port가 무엇인지 확인해서 브라우저에 접속함
