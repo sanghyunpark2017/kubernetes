@@ -1,0 +1,31 @@
+
+
+################################################################
+Installing a pod network add-on
+################################################################
+
+#1. CALICO 설치할 것이며, master1번 서버에서만 실행
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml
+kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml
+
+
+#2. 구동확인
+#calico-node-**** POD가 master 마다 생성되고 그 후에 coredns가 running 됨
+#모두 running 이후 수분 동안 지켜봄
+
+kubectl get pods --namespace=kube-system
+
+
+#3. HA테스트
+#시나리오 1 : etcd 3대 중 1대 셧다운 (2대 running)
+=> 정상 동작
+
+#시나리오 2 : 추가 1대 리부팅
+=> 리부팅 동안 동작 불가 (1대만 running)
+=> 리부팅이 완료되면 정상 동작( 2대 running)
+
+#셧다운했던 ETCD서버 부팅하고 테스트 종료
+
+
+kubectl get nodes -o wide
+kubectl get pods --all-namespaces -o wide
