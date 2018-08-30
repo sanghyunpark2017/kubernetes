@@ -220,9 +220,30 @@ docker push localreg:5000/mycentos7:base
 
 #업로드확인
 http://10.10.64.89:5000/v2/_catalog
-
+또는
 curl -X GET http://10.10.64.89:5000/v2/_catalog
 
+#로컬이미지 삭제하고 Private Resistry에서 다시 가져온다
+docker rmi localreg:5000/mycentos7:base
+docker pull localreg:5000/mycentos7:base
+
+
+########################################
+# 아파치웹서버(커스터마이징)
+########################################
+
+#이 것 역시 시작 COMMAND가 /bin/sh이므로 처음에는 대황형으로 만든다.
+docker run -it --name "myapache24" localreg:5000/mycentos7:base
+
+#대황형을 빠져나온 후 다시 start 해준다.
+exit
+docker start myapache24
+docker ps
+
+#쉘에 들어가서
+docker exec -it myapache24 /bin/bash
+
+#아파치 설치 한다.
 
 
 
