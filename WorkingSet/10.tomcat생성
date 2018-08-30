@@ -23,8 +23,6 @@ docker exec -it mytomcat7 /bin/bash
 
 
 
-
-
 ###########################
 # JAVA 설치(root계정)
 ###########################
@@ -53,7 +51,8 @@ chown -R wasadm:wasadm /app/java
 
 #root 프로파일
 su - 
-vi /root/.bash_profile
+#vi /root/.bash_profile      #docker centos는 이 프로파일이 참조되지 않음
+#vi /root/.bashrc
 ------------------------------------------------------------------------------------
 # User specific environment and startup programs
 export PS1='[\u@\h \w]# '
@@ -64,7 +63,7 @@ export PATH=$PATH:$JAVA_HOME/bin/
 export CLASSPATH=$CLASSPATH:$JAVA_HOME/lib/tools.jar
 ------------------------------------------------------------------------------------
 
-source /root/.bash_profile
+source /root/.bashrc
 java -version
 
 #wasadm 프로파일
@@ -82,11 +81,6 @@ export CLASSPATH=$CLASSPATH:$JAVA_HOME/lib/tools.jar
 
 source /home/wasadm/.bash_profile
 java -version
-
-
-
-
-
 
 
 
