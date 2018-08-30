@@ -39,8 +39,12 @@ BaseCentos7-Java7-Tomat8M : Tomcat 2대
 #기본OS 이미지 생성
 #########################
 
+DOCKER에서 
 -DockerHub에서 Centos7 이미지 가져온다
 -Shell로 들어가서 이것 저것 설치한다.
+
+이 것을 Private Hub에 올려 놓고, Kubernetes에서 동작하는지 본다
+
 
 
 
