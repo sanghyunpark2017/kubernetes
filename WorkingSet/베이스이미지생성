@@ -214,13 +214,14 @@ openssl version
 #hosts 파일에 localreg 등록
 docker commit CONTAINER_ID localreg:5000/mycentos7:base
 
-#이미지를 본 후 업로드 한다
+#이미지가 저장되었는지 확인되면 업로드 한다
 docker images
-
 docker push localreg:5000/mycentos7:base
 
-#이미지를 Local 환경에 맞게 naming(repository:tag) 한다
-docker tag mycentos7 localreg:5000/mycentos7:base
+#업로드확인
+http://10.10.64.89:5000/v2/_catalog
+
+curl -X GET http://10.10.64.89:5000/v2/_catalog
 
 
 
