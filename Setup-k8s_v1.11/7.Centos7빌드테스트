@@ -1,4 +1,38 @@
 
+#개요
+1) Centos7 도커이미지에 openssh(/w SSL)을 컴파일하고, 표준OS 설정을 추가하여 이 것을 기본OS 이미지로 사용한다.
+-시스템툴 : openssh 컴파일, netstat, ping 등 추가
+-계정 : wasadm 등 공통사용계정추가
+-테스트 : SSHD 구동하고, ssh 접속
+
+2) 위 기존OS이미지를 가지고 시스템로그를 elasticsearch로 빼는 filebeat 등 ADDON 작업을 한다.
+ADDON 작업은 현재로서는 filebeat만 있음(데몬구동 -> SSHD+FILEBEAT)
+이 것을 BASE-OS 이미지로 사용한다.
+
+
+3) INIT-OS 또는 BASE-OS 위에 아파치를 소스컴파일 한다.
+http only, http&https 2가지 버전으로 하며 
+외보볼륨 연결은 NFS로 하고 설정파일, 로그파일, 인증서파일 등을 EXPORT 한다.
+이 것을 Single Apache 표준 이미지로 사용한다.
+
+
+#도커이미지 이름
+BaseCentos7 : 기본OS 이미지
+BaseCentos7-Java6 : 기본OS 이미지에 Java6설치
+BaseCentos7-Java7 : 기본OS 이미지에 Java7설치
+
+BaseCentos7-Apache24S : Apache 1대
+BaseCentos7-Apache24M : Apache 2대
+
+BaseCentos7-Java6-Tomat7S : Tomcat 1대
+BaseCentos7-Java7-Tomat8M : Tomcat 2대
+
+
+
+
+
+
+
 
 #
 #
