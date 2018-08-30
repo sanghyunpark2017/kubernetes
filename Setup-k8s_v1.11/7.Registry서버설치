@@ -5,7 +5,7 @@ mkdir -p /etc/docker
 -------------------------------------------------------
 cat << EOF > /etc/docker/daemon.json
 {
-  "insecure-registries" : ["localhub:5000"]
+  "insecure-registries" : ["localreg:5000"]
 }
 -------------------------------------------------------
 
