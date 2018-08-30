@@ -125,9 +125,11 @@ cd /app/tomcat7/bin
 ./startup.sh
 ./shutdown.sh
 
+#톰캣 내장 웹서버(8080) 테스트
+curl localhost:8080
 
-#톰캣 내장 웹서버(8080) 통해서 테스트페이지 접속 테스트
-http://x.x.x.x:8080
+
+
 
 
 
