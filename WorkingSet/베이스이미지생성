@@ -36,7 +36,7 @@ BaseCentos7-Java7-Tomat8M : Tomcat 2대
 
 
 #########################
-#기본OS 이미지 생성
+#기본OS 이미지 생성 기본 개념
 #########################
 
 DOCKER에서 
@@ -44,6 +44,105 @@ DOCKER에서
 -Shell로 들어가서 이것 저것 설치한다.
 
 이 것을 Private Hub에 올려 놓고, Kubernetes에서 동작하는지 본다
+
+
+1. Centos 버전의 DOCKERFILE은 공식 사이트에 있음
+#https://hub.docker.com/_/centos/
+
+#CentOS 이미지 문서를 참고하여 설치함
+#https://github.com/docker-library/docs/tree/master/centos
+
+#이렇게 그냥 가져와도 되나 추가 할 것들이 많으니
+docker pull centos:6.9
+docker pull centos:7
+
+#Dockerfile안에서 가져오면서 (아래 예는 systemd 기반의 OS이미지임)
+-----------------------------------------------------------------------------------------------
+cat << EOF > /root/Dockerfile
+FROM centos:7
+ENV container docker
+RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
+systemd-tmpfiles-setup.service ] || rm -f $i; done); \
+rm -f /lib/systemd/system/multi-user.target.wants/*;\
+rm -f /etc/systemd/system/*.wants/*;\
+rm -f /lib/systemd/system/local-fs.target.wants/*; \
+rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+rm -f /lib/systemd/system/basic.target.wants/*;\
+rm -f /lib/systemd/system/anaconda.target.wants/*;
+VOLUME [ "/sys/fs/cgroup" ]
+CMD ["/usr/sbin/init"]
+EOF
+-----------------------------------------------------------------------------------------------
+
+#local에 이미지를 만들고
+cd ~
+docker build --rm -t local/c7-systemd .
+
+docker images
+
+#이 것을 가져다가 다시 만든다
+-----------------------------------------------------------------------------------------------
+cat << EOF > /root/Dockerfile
+FROM local/c7-systemd
+RUN yum -y install httpd; yum clean all; systemctl enable httpd.service
+EXPOSE 80
+CMD ["/usr/sbin/init"]
+EOF
+-----------------------------------------------------------------------------------------------
+
+docker build --rm -t local/c7-systemd-httpd .
+
+docker images
+
+#만든 이미지를 실행한다. 
+#systemd 버전은 실행 후 쉘이 컨테이너에 머물러 있음(조사필)
+docker run local/c7-systemd-httpd
+
+대화형은 오류
+docker run -it local/c7-systemd-httpd
+
+2. 여기 Dockerfile 내용을 가져다고 Dockerfile 생성(대소문자 구분)
+
+
+
+
+#########################
+#기본 Centos7 OS 이미지 생성
+#########################
+
+#검색하면 centos official이 있는데 이 것은 항상 최신의 이미지임
+docker search centos
+
+#버전을 지정해서 받음 ( repositary "docker.io"는 생략해도 되며, Centos OLD 버전도 됨)
+docker pull --name "mycentos7" docker.io/centos:7
+docker images
+
+#로컬에 내려 받은 것을 실행하고 RUNNING 되는지 보면
+docker run --name "mycentos7" docker.io/centos
+docker ps
+
+#실행되지 못하고 off 상태에 있고, exit 코드는 0인 것을 알 수 있음
+docker ps -a
+
+#이러한 OS컨테이너는 COMMAND로 데몬이 아닌(없으므로) "/bin/bash" 쉘을 지정했기 때문인데
+#방금 만든 컨테이너를 지우고
+docker rm mycentos7
+
+#처음에 run 할 때 대화형으로 만들어 주면 되며, 컨테이너 안의 쉘로 들어가 있기에 exit로 나온다.
+#exit 나올 때 COMMAND가 종료된 것이므로 컨테이너는 종료된다.
+docker run -it --name "mycentos7" docker.io/centos:7 
+exit
+
+#실행포인트가 대화(쉘)이므로 exit로 나오면 실행중이던 컨테이너가 종료되며 종료된 흔적 확인은
+docker ps -a
+
+#이렇게 처음에 대화형으로 만들게 되면 재실행하면 running 되며
+docker start mycentos7
+docker ps
+
+#언제든지 쉘 안으로 들어가고 나오고 할 수 있다.
+docker exec -it mycentos7 /bin/bash
 
 
 
