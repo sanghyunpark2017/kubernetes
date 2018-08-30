@@ -107,9 +107,9 @@ docker run -it local/c7-systemd-httpd
 
 
 
-#########################
+########################################
 #기본 Centos7 OS 이미지 생성
-#########################
+########################################
 
 #검색하면 centos official이 있는데 이 것은 항상 최신의 이미지임
 docker search centos
@@ -131,7 +131,8 @@ docker rm mycentos7
 
 #처음에 run 할 때 대화형으로 만들어 주면 되며, 컨테이너 안의 쉘로 들어가 있기에 exit로 나온다.
 #exit 나올 때 COMMAND가 종료된 것이므로 컨테이너는 종료된다.
-docker run -it --name "mycentos7" docker.io/centos:7 
+#TIMEZONE은 서울로 맞춘다.
+docker run -it -e TZ=Asia/Seoul --name "mycentos7" docker.io/centos:7 
 exit
 
 #실행포인트가 대화(쉘)이므로 exit로 나오면 실행중이던 컨테이너가 종료되며 종료된 흔적 확인은
@@ -144,6 +145,59 @@ docker ps
 #언제든지 쉘 안으로 들어가고 나오고 할 수 있다.
 docker exec -it mycentos7 /bin/bash
 
+#크기 93MB / 293MB
+docker ps -s
+
+########################################
+# 툴 설치
+########################################
+
+docker exec -it mycentos7 /bin/bash
+
+#OS공통 툴(크기 94MB / 294MB)
+yum install -y net-tools wget
+
+#OpenSSH 빌드용(크기 387MB / 587MB)
+yum install -y perl-CGI 
+yum groupinstall -y "Development tools"
+
+#아파치 빌드용(크기 511MB / 711MB)
+yum install -y expat-devel
+yum install -y gcc*
+
+
+
+
+
+
+
+
+
+
+
+#alias(lr)
+cat << EOF >> /root/.bash_profile
+alias lr='ls -ltr'
+EOF
+
+
+#bk
+vi /sbin/bk
+--------------------------------------------------------
+#CP.ALL.ENABLE
+
+for i in $*
+do
+        if [ -f $i ]
+        then
+                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
+        else
+                echo "`basename $0` <filenames>"
+        fi
+done
+------------------------------------------------------------
+ 
+chmod 755 /sbin/bk
 
 
 
