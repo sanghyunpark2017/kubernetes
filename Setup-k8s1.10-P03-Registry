@@ -20,4 +20,6 @@ docker run -d -it -p 8080:8080 --name registry-web --link registry-srv -e REGIST
 
 
 
+http://10.10.64.89:5000/v2/_catalog
+
 
