@@ -212,7 +212,7 @@ yum install initscripts -y
 curl localhost
 curl localhost/hello.html
 
-#컨테이너 밖에서 테스트페이지 호출
+#컨테이너 밖 도커호스트에서 테스트페이지 호출
 exit
 
 #IP주소를 찾은 후
@@ -221,6 +221,12 @@ docker inspect --format '{{ .NetworkSettings.IPAddress }}' CONTAINER_ID
 
 curl 172.x.x.x
 curl 172.x.x.x/hello.html
+
+#외부PC에서 호출
+#먼저 expose해야 하니 현재 running 컨테이너 중지한다
+docker stop 
+
+#
 
 
 
