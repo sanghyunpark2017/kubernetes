@@ -203,8 +203,28 @@ ll
 /app/apache24/bin/apachectl start
 
 #실행하면
-/etc/rc.d/init.d/functions: No such file or directory 에러 발생;;;;;;;;;;;;;;;;;;;;;;;;;;
+/etc/rc.d/init.d/functions: No such file or directory 에러 발생
 
+#설치 후 재시도 OK
+yum install initscripts -y
+
+#컨테이너 안에서 테스트페이지 호출
+curl localhost
+curl localhost/hello.html
+
+#컨테이너 밖에서 테스트페이지 호출
+exit
+
+#IP주소를 찾은 후
+docker ps
+docker inspect --format '{{ .NetworkSettings.IPAddress }}' CONTAINER_ID
+
+curl 172.x.x.x
+curl 172.x.x.x/hello.html
+
+
+
+#(참고)systemd 관련 CentOS페이지
 #https://github.com/docker-library/docs/tree/master/centos
 Dockerfile for systemd base image~~~~~~~~~
 
