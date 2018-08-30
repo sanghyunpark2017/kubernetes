@@ -240,9 +240,9 @@ docker inspect --format '{{ .NetworkSettings.IPAddress }}' CONTAINER_ID
 curl 172.x.x.x
 curl 172.x.x.x/hello.html
 
-#####################
-# 이미지로 저장(1차)
-#####################
+##########################################
+# 이미지로 저장 후 Private Registry업로드
+##########################################
 docker commit CONTAINER_ID localreg:5000/myapache24:base
 
 #지금 구동 중이던 컨테이너 삭제
@@ -262,6 +262,30 @@ docker ps
 http://DOCKERHOST
 http://DOCKERHOST-IP/hello.html
 
+#이제 업로드
+docker push localreg:5000/myapache24:base
+curl localhost:5000/v2/_catalog
+
+#업로드된 이미지는 시작 명령을 "/bin/bash"로 기억하고 있으나
+#kubernetes에서는 컨테이너가 기억하고 있는 COMMAND를 무시하고(OVERRIDE) 실행 할 수 있으며,
+#이 때 apachectl 실행으로 변경해주면 됨
+#https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
+예)
+---------------------------------------------------------------------------------------------
+apiVersion: v1
+kind: Pod
+metadata:
+  name: command-demo
+  labels:
+    purpose: demonstrate-command
+spec:
+  containers:
+  - name: command-demo-container
+    image: debian
+    command: ["printenv"]
+    args: ["HOSTNAME", "KUBERNETES_PORT"]
+  restartPolicy: OnFailure
+---------------------------------------------------------------------------------------------
 
 
 
