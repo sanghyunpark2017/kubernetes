@@ -149,13 +149,13 @@ docker exec -it mycentos7 /bin/bash
 docker ps -s
 
 ########################################
-# 툴 설치
+# 설치 - yum
 ########################################
 
 docker exec -it mycentos7 /bin/bash
 
 #OS공통 툴(크기 94MB / 294MB)
-yum install -y net-tools wget
+yum install -y net-tools wget which
 
 #OpenSSH 빌드용(크기 387MB / 587MB)
 yum install -y perl-CGI 
@@ -166,6 +166,61 @@ yum install -y expat-devel
 yum install -y gcc*
 
 
+########################################
+# 설치 - OpenSSL
+########################################
+
+1. 툴설치(Centos7)
+yum groupinstall -y "Development tools"
+yum install -y perl-CGI
+yum install -y wget
+
+2. 다운로드 
+mkdir -p /app/src
+cd /app/src
+wget https://ftp.openssl.org/source/old/1.0.1/openssl-1.0.1u.tar.gz
+tar zxvf openssl-1.0.1u.tar.gz
+cd openssl-1.0.1u
+
+3. 컴파일
+./config -fPIC --prefix=/usr/local/ssl
+make
+make test
+make install
+
+5. 이전 버전 백업(없으므로 PASS
+which openssl
+/usr/bin/openssl version
+ls -al /usr/bin/openssl
+mv /usr/bin/openssl /usr/bin/openssl.0.2K-fips
+
+6. 신규 버전을 심볼릭 링크로 설정
+ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl
+
+7. 신규 버전 확인
+which openssl
+/usr/bin/openssl version
+
+openssl version
+
+
+########################################
+# Local Registry에 등록
+########################################
+
+#이 컨테이너를 이미지로 저장한다.
+#https://www.techrepublic.com/article/how-to-commit-changes-to-a-docker-image/
+#이미지 이름은 Local Resistry에 업로드 할 수 있는 naming(repository:tag)으로 한다
+#hosts 파일에 localreg 등록
+docker commit CONTAINER_ID localreg:5000/mycentos7:base
+
+#이미지를 본 후 업로드 한다
+docker images
+
+docker push localreg:5000/mycentos7:base
+
+#이미지를 Local 환경에 맞게 naming(repository:tag) 한다
+docker tag mycentos7 localreg:5000/mycentos7:base
 
 
 
@@ -175,34 +230,12 @@ yum install -y gcc*
 
 
 
-#alias(lr)
-cat << EOF >> /root/.bash_profile
-alias lr='ls -ltr'
-EOF
-
-
-#bk
-vi /sbin/bk
---------------------------------------------------------
-#CP.ALL.ENABLE
-
-for i in $*
-do
-        if [ -f $i ]
-        then
-                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
-        else
-                echo "`basename $0` <filenames>"
-        fi
-done
-------------------------------------------------------------
- 
-chmod 755 /sbin/bk
 
 
 
 
 
-#
-#
-#
+
+
+
+
