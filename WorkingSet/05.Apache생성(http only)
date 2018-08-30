@@ -243,13 +243,33 @@ curl 172.x.x.x/hello.html
 #####################
 # 이미지로 저장(1차)
 #####################
+docker commit CONTAINER_ID localreg:5000/myapache24:base
+
+#지금 구동 중이던 컨테이너 삭제
+docker stop myapache24
+docker rm myapache24
+
+#외부포트 연결하면서 실행하고 APACHE 기동 
+docker run -it -p 80:80 --name "myapache24" localreg:5000/myapache24:base
+/app/apache24/bin/apachectl start
+exit
+docker start myapache24
+
+#도커호스트서버의 80포트와 컨테이너 내부의 80포트가 서로 매핑됨을 확인 한 후
+docker ps
+
+#외부PC에서 호출 OK
+http://DOCKERHOST
+http://DOCKERHOST-IP/hello.html
 
 
 
 
-#외부PC에서 호출
-#먼저 expose해야 하니 현재 running 컨테이너 중지한다
-docker stop 
+
+
+
+
+
 
 
 
