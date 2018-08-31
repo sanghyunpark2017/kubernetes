@@ -1,0 +1,15 @@
+
+#지금 까지 docker 이미지로 myapache24와 mytomcat7을 만듬
+#이제 부터는 이 것들을 kube 환경에서 구동되게끔 가져오고
+#web, was각자의 service를 만든 후 테스트 페이지 호출
+
+############################
+# myapache24 + kube config
+############################
+
+#docker CMD를 kube CMD로 변경
+#쉽지 않으면, 다시 docker 이미지 안에 구동 스크립트를 넣어서 이미지화 할 수도 있음
+
+
+
+
