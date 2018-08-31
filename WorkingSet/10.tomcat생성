@@ -130,6 +130,20 @@ curl localhost:8080
 
 
 
+##########################################
+# 이미지로 저장 후 Private Registry업로드
+##########################################
+docker ps
+docker commit CONTAINER_ID localreg:5000/mytomcat7:base
+docker images
+
+#지금 구동 중이던 컨테이너 삭제
+docker stop mytomcat7
+docker rm mytomcat7
+
+#업로드
+docker push localreg:5000/mytomcat7:base
+curl localhost:5000/v2/_catalog
 
 
 
