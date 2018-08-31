@@ -30,6 +30,7 @@ docker pull localreg:5000/mycentos7:base
 #쉽지 않으면, 다시 docker 이미지 안에 구동 스크립트를 넣어서 이미지화 할 수도 있음
 
 
+#설마하니.. CMD 지정해야 하나?
 
 vi /root/demo-myapache24.yaml
 -----------------------------------------------------------------------------------------------
@@ -61,10 +62,46 @@ kubectl get deployments demo-myapache24-deployment
 
 kubectl get pods
 
-
 kubectl describe deployments demo-myapache24-deployment
 
+
+kubectl get pods
+kubectl describe pods *****************
+journalctl -f -u docker
+
+
+
+
  
+vi /root/demo-mycentos7.yaml
+-----------------------------------------------------------------------------------------------
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: mycentos7-deployment
+spec:
+  selector:
+    matchLabels:
+      app: mycentos7
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: mycentos7
+    spec:
+      containers:
+      - name: mycentos7
+        image: localreg:5000/mycentos7:base
+        ports:
+        - containerPort: 80
+-----------------------------------------------------------------------------------------------
+
+kubectl apply -f demo-mycentos7.yaml
+
+
+
+
+
 
 
 
