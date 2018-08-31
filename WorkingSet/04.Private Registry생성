@@ -1,13 +1,65 @@
 
+#싱글서버에 도커 설치
+mkdir -p /app/registry/data
+mkdir -p /app/registry/security
 
-mkdir -p /etc/docker
+docker run -d -p 5000:5000 -v /app/registry/data:/var/lib/registry --restart=always --name registry registry:2
 
+#쿠베서버에 설정
+bk /etc/docker/daemon.json
 -------------------------------------------------------
 cat << EOF > /etc/docker/daemon.json
 {
-  "insecure-registries" : ["localhub:5000"]
+  "insecure-registries" : ["localreg:5000"]
 }
+EOF
 -------------------------------------------------------
+
+cat << EOF >> /etc/hosts
+10.10.64.89  localreg
+EOF
+
+systemctl restart docker
+systemctl status docker
+
+docker pull localreg:5000/mycentos7:base
+
+
+#docker daemon --insecure-registry="10.10.64.89:5000"
+#dockerd --insecure-registry="localreg:5000"
+#kubectl create secret docker-registry my-secret --docker-server="https://your.private.repo" --docker-username=”USER” --docker-password=”PASS” --docker-email=”YOU@COMPANY”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mkdir -p /etc/docker
+
 
 yum install -y docker
 
