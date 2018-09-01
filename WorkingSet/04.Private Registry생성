@@ -158,7 +158,11 @@ docker pull nginx
 docker tag nginx reg.hmp.com:443/mynginx
 docker push reg.hmp.com:443/mynginx
 
- 
+#만약, push가 안되면
+docker stop registry
+docker start registry
+> 이 떄 iptable ,, 에러 나면 재부팅 후 재시작 ok
+
 
 
 ################################
