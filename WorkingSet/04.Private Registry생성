@@ -176,6 +176,8 @@ update-ca-trust
 systemctl restart docker
 
 vi /etc/hosts
+******  reg.hmp.com
+
 
 docker pull reg.hmp.com:443/nginx
 docker images
