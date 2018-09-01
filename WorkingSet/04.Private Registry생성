@@ -124,8 +124,10 @@ cp /certs/domain.crt  /etc/docker/certs.d/hmp.com:443/ca.crt
 cp /certs/domain.crt   /etc/pki/ca-trust/source/anchors/hmp.com.crt
 update-ca-trust
 
-#issue with SELinux and Docker:
+#issue with SELinux and Docker (컨테이너가 외부 볼륨 액세스)
 chcon -Rt svirt_sandbox_file_t /certs/
+chcon -Rt svirt_sandbox_file_t /app/registry/data/
+
 
 #갱신 인증서 반영
 systemctl restart docker
