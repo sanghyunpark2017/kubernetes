@@ -1,135 +1,242 @@
 
-#싱글서버에 도커 설치
-mkdir -p /app/registry/data
-mkdir -p /app/registry/security
+#일반 서버에 도커 설치 
+#secure 통신용 인증서는 자체 발행하여 private서버 및 kubernetes 사용
 
-#docker run -d -p 5000:5000 -v /app/registry/data:/var/lib/registry --restart=always --name registry registry:2
+######################
+# Private Registry Server
+######################
 
-docker run -d \
- --privileged \
-  -p 5000:5000 \
-  --restart=always \
-  --name registry \
-  -v /mnt/registry/:/var/lib/registry \
-  -e REGISTRY_STORAGE_DELETE_ENABLED=true \
-  registry:2.6.0
-
-
->>>>>>>>
-https://docs.docker.com/registry/deploying/#get-a-certificate
-
-
-#쿠베서버에 설정
-bk /etc/docker/daemon.json
--------------------------------------------------------
-cat << EOF > /etc/docker/daemon.json
-{
-  "insecure-registries" : ["localreg:5000"]
-}
-EOF
--------------------------------------------------------
-
-cat << EOF >> /etc/hosts
-10.10.64.89  localreg
-EOF
-
-systemctl restart docker
-systemctl status docker
-
-docker pull localreg:5000/mycentos7:base
-
-
-#docker daemon --insecure-registry="10.10.64.89:5000"
-#dockerd --insecure-registry="localreg:5000"
-#kubectl create secret docker-registry my-secret --docker-server="https://your.private.repo" --docker-username=”USER” --docker-password=”PASS” --docker-email=”YOU@COMPANY”
-
-
-
-
-
-
-
-
-
-#####################################################################################
-https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-
-
-
-docker login 또는 직접 /etc/docker/daemon.json 파일을 만든다
-
-
-#regcred라는 이름으로
-kubectl create secret docker-registry regcred --docker-server=<your-registry-server> --docker-username=<your-name> --docker-password=<your-pword> --docker-email=<your-email>
-
-kubectl get secret regcred --output="jsonpath={.data.\.dockerconfigjson}" | base64 --decode
-
-#그래서 이 것들을 이렇게 가져오게 한다
-apiVersion: v1
-kind: Pod
-metadata:
-  name: private-reg
-spec:
-  containers:
-  - name: private-reg-container
-    image: <your-private-image>
-  imagePullSecrets:
-  - name: regcred
-
-
-#####################################################################################
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-mkdir -p /etc/docker
-
-
-yum install -y docker
-
-systemctl start docker
+#DOCKER 설치 후 진행
 systemctl enable docker
 
+ 
+#(PASS)인증서 자체 발행
+mkdir -p /certs
+cd /certs
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout /certs/domain.key -x509 -days 36500 -out /certs/domain.crt
+>>your name or your hostname : reg.hmp.com
 
-docker run -d -p 5000:5000 --name registry-srv registry:2
-docker run -d -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web 
+
+# "reg.hmp.com" 100년 만기 인증서 (재사용 용도)
+
+##############
+# domain.crt
+##############
+cat << EOF > /certs/domain.crt
+-----BEGIN CERTIFICATE-----
+MIIFhTCCA22gAwIBAgIJANsw2E5PMAemMA0GCSqGSIb3DQEBCwUAMFgxCzAJBgNV
+BAYTAlhYMRUwEwYDVQQHDAxEZWZhdWx0IENpdHkxHDAaBgNVBAoME0RlZmF1bHQg
+Q29tcGFueSBMdGQxFDASBgNVBAMMC3JlZy5obXAuY29tMCAXDTE4MDkwMTAxMzEy
+M1oYDzIxMTgwODA4MDEzMTIzWjBYMQswCQYDVQQGEwJYWDEVMBMGA1UEBwwMRGVm
+YXVsdCBDaXR5MRwwGgYDVQQKDBNEZWZhdWx0IENvbXBhbnkgTHRkMRQwEgYDVQQD
+DAtyZWcuaG1wLmNvbTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAMRk
+uJTC1aWsEIXcOZ7HLPXGdmHePmw2PLncX7wCaHOFU7T2+w9/f5pEsvsTa2WDzweP
+XpTjL0ooIFaJrq9kF77AoNu2EkbXn6AcnuYADO/NCykLrPsZ1eUf/QrcTV5sOMN7
+SMbCiuEQSrb6ZWYxks5mdn0O4rY83WZ3m+jbwslrzyHU1ImaM+RvYdDArC6Nm64M
+PB/KqfyH6N9K/PL27kJ+6d62PUzxkGJqthkKprK3yGbcRdZKtMXo7dsqT7QPTLJx
+VFLJaJ+C6hKdu6uSopvWNEZASvxEgcSxjTcx2k8YzwH+Ygz6+oMveD/Pxy4Fcpnv
+yal2w9H5rW0IgksZK/ZNinxLJOScHGEiDy2dXa3qCWbAZ//zIdS+ejH57YU54yuH
+6HD8gMpLs//DFqOdp+sDpdE+K7qySKoCJ2aD0imeR/4Q9pUhPOJSpbQToZNd6y4q
+eRZ4EJu8pUy0toAGAYCzKEH9Me2CZWFuhTIwhIKY+QnP91DFNHpBTPbnjYGYwaWC
+++YVtcEDhlECnAi9pce8mdF4AKWzmlW1Fx8mkDlrB1tBLDEBGP99iULHN30VERN+
+y3W79mqrqtbbqot9uGFMiPoCZtgPkJfUH2rNgdIsMiRVLbJ6aRJT1++VcGS7euvW
+rjQp2nC+R7WadvoVw/Ru+/9Fe2d0YraOJ3B1UVpbAgMBAAGjUDBOMB0GA1UdDgQW
+BBTxXQvHLuDwV1880DVKjRBnOHZz0zAfBgNVHSMEGDAWgBTxXQvHLuDwV1880DVK
+jRBnOHZz0zAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQBwtCTJ2wot
+YTcJey+krrG1cRjKEtyoZle1qnUEWeUHQeeenq+ZrtqmSnl5K15QKYWoQr9raV2Y
++gGiijmVaAjjrQ4ByZ2yMKZs8u01UY2d8hEYhW9voxKq2vehHhyXhUeV61RzUJqN
+iUrzZZBbyUTafomr6ng/tA0L8LVq62X+GyI/CKuv6iSCE06MrYW6pjaxbKtu7Rmc
+BVmxJfhI+TziWkBFq5pN3IZeD9EsrbyAFvyo94PQupdwV2PV/uwxAbThKAJAgiQ+
+0Qq3S0Xi0aM78opLfAIzftSywedF3uvrnSW0rytTjI5Hu6DykrWraDmzAJJar0Uw
+AStAQHQ7Km97O7CewCaRVkVTA3tf+KguZpXII1vPQ1HRjqSuRrsfs6iPLnTM6xha
+BJXlqhN1g24aIEyWBFEMpM1VBzBERmvHcsdtsGY2DoIx1s5FcAEwcrUEPbf2nrb/
+HmIjeBI3BapXdgCVCe/8918P++M8VfgHuv5HqMQsb4x3PCFBp5QZMYoXYOz4YVUu
++TtV1utnKMvQSoeubY7RiucGSsly9sTL+xfIhV9kCYJmbJ/205lROm+0kKF8/fmm
+beJzNvYb0WJjyh3PkxRKRV4pOYTDca483QmG8Zd7ThJORl4D0IfqyNhQpp1QHenp
+oXZpfG0m68pb6aSzZA0MOvGNp+W6SQSyOw==
+-----END CERTIFICATE-----
+EOF
+
+##############
+# domain.key
+##############
+cat << EOF > /certs/domain.key
+-----BEGIN PRIVATE KEY-----
+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
+6Ol2xqmfP3hcHwoAq+eBfM/Iiepr
+-----END PRIVATE KEY-----
+EOF
+
+
+mkdir -p /etc/docker/certs.d/hmp.com:443
+cp /certs/domain.crt  /etc/docker/certs.d/hmp.com:443/ca.crt
+
+
+cp /certs/domain.crt   /etc/pki/ca-trust/source/anchors/hmp.com.crt
+update-ca-trust
+
+#갱신 인증서 반영
+systemctl restart docker
+
+
+#docker stop registry
+#docker rm registry
+
+#issue with SELinux and Docker:
+chcon -Rt svirt_sandbox_file_t /certs/
+
+
+docker run -d \
+  --restart=always \
+  --name registry \
+  -v /certs:/certs \
+  -e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
+  -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+  -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+  -p 443:443 \
+  registry:2.6.2
+
+docker logs registry
+
+
+vi /etc/hosts
+
+curl --cacert /certs/domain.crt -X GET https://reg.hmp.com/v2/_catalog
+curl https://reg.hmp.com/v2/_catalog
 
 
 
-http://10.10.64.89:5000/v2/_catalog
+###test
+docker pull nginx
+docker tag nginx reg.hmp.com:443/mynginx
+docker push reg.hmp.com:443/mynginx
+
+ 
+
+ 
+
+ 
+
+ 
+
+################################
+
+# Kubernetes - Workers(Nodes)
+
+################################
+
+ 
+
+#Private Registry 서버의 인증서 내용 복사하여
+
+cat /etc/pki/ca-trust/source/anchors/hmp.com.crt
+
+ 
+
+#worker서버에 붙여넣기
+cat << EOF > /etc/pki/ca-trust/source/anchors/hmp.com.crt
+*****************
+EOF
+
+ 
+
+#갱신
+update-ca-trust
+
+#worker서버 docker 재시작하여 갱신 인증서 반영하고, hosts 파일에 private registy srv 등록
+systemctl restart docker
+
+vi /etc/hosts
+
+
+#테스트로 docker에서 다운로드 되면 kube에서도 됨
+docker pull reg.hmp.com:443/nginx
+
+
+#이제 테스트 이미지 삭제 후 모든 workder에서 동일 작업
+
+ 
+
+################################
+# Kubernetes - Controllers(Masters)
+################################
+
+ 
+vi /root/test-private-reg.yaml
+------------------------------------------------------------------------------------------------------------------------------
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: test-nginx
+spec:
+  selector:
+    matchLabels:
+      app: test-nginx
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: test-nginx
+    spec:
+      containers:
+      - name: test-nginx
+        image: reg.hmp.com:443/mynginx
+        ports:
+        - containerPort: 80
+------------------------------------------------------------------------------------------------------------------------------
+
+ 
+
+kubectl apply -f /root/test-private-reg.yaml
+
+ 
+
 
