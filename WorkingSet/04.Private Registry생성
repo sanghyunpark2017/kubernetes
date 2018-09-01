@@ -216,7 +216,7 @@ vi /etc/hosts
 ******  reg.hmp.com
 
 
-docker pull reg.hmp.com:443/nginx
+docker pull reg.hmp.com:443/mynginx
 docker images
 docker rmi
 
