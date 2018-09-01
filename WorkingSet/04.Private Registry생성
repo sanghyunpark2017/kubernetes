@@ -9,16 +9,17 @@
 #DOCKER 설치 후 진행
 systemctl enable docker
 
- 
-#(PASS)인증서 자체 발행
+#디렉토리 생성
+mkdir -p /app/registry/data
 mkdir -p /certs
+
+#(PASS)인증서 자체 발행
 cd /certs
 openssl req  -newkey rsa:4096 -nodes -sha256 -keyout /certs/domain.key -x509 -days 36500 -out /certs/domain.crt
 >>your name or your hostname : reg.hmp.com
 
 
-# "reg.hmp.com" 100년 만기 인증서 (재사용 용도)
-
+#기 발행한 100년 만기 인증서 (재사용)
 ##############
 # domain.crt
 ##############
@@ -123,26 +124,24 @@ cp /certs/domain.crt  /etc/docker/certs.d/hmp.com:443/ca.crt
 cp /certs/domain.crt   /etc/pki/ca-trust/source/anchors/hmp.com.crt
 update-ca-trust
 
-#갱신 인증서 반영
-systemctl restart docker
-
-
-#docker stop registry
-#docker rm registry
-
 #issue with SELinux and Docker:
 chcon -Rt svirt_sandbox_file_t /certs/
+
+#갱신 인증서 반영
+systemctl restart docker
 
 
 docker run -d \
   --restart=always \
   --name registry \
   -v /certs:/certs \
+  -v /app/registry/data:/var/lib/registry \ 
   -e REGISTRY_HTTP_ADDR=0.0.0.0:443 \
   -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
   -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
   -p 443:443 \
-  registry:2.6.2
+  registry:2
+
 
 docker logs registry
 
@@ -161,49 +160,29 @@ docker push reg.hmp.com:443/mynginx
 
  
 
- 
-
- 
-
- 
 
 ################################
-
 # Kubernetes - Workers(Nodes)
-
 ################################
 
- 
-
-#Private Registry 서버의 인증서 내용 복사하여
-
-cat /etc/pki/ca-trust/source/anchors/hmp.com.crt
-
- 
-
-#worker서버에 붙여넣기
+#"reg.hmp.com"서버인증서를 kubernetes worker서버에 붙여넣기 (위 참고
 cat << EOF > /etc/pki/ca-trust/source/anchors/hmp.com.crt
-*****************
+(생략)
 EOF
-
- 
 
 #갱신
 update-ca-trust
 
-#worker서버 docker 재시작하여 갱신 인증서 반영하고, hosts 파일에 private registy srv 등록
 systemctl restart docker
 
 vi /etc/hosts
 
-
-#테스트로 docker에서 다운로드 되면 kube에서도 됨
 docker pull reg.hmp.com:443/nginx
+docker images
+docker rmi
 
+--반복--
 
-#이제 테스트 이미지 삭제 후 모든 workder에서 동일 작업
-
- 
 
 ################################
 # Kubernetes - Controllers(Masters)
