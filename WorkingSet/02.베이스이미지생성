@@ -233,23 +233,7 @@ docker pull reg.hmp.com:443/mycentos7:base
 # 아파치웹서버(커스터마이징)
 ########################################
 
-#방금 만든 OS 베이스 이미지위에 아파치 설치한다
-#이 것 역시 시작 COMMAND가 /bin/sh이므로 처음에는 대황형으로 만든다.
-docker run -it --name "myapache24" reg.hmp.com:443/mycentos7:base
-
-#대황형을 빠져나온 후 다시 start 해준다.
-exit
-docker start myapache24
-docker ps
-
-#쉘에 들어가서
-docker exec -it myapache24 /bin/bash
-
-#아파치 설치 한다.
-
-
-
-
+#
 
 
 
