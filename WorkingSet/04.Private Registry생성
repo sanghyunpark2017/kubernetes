@@ -3,11 +3,34 @@
 #secure 통신용 인증서는 자체 발행하여 private서버 및 kubernetes 사용
 
 ######################
-# Private Registry Server
+# 도커설치
 ######################
 
-#DOCKER 설치 후 진행
+#Uninstall old versions
+yum remove docker \
+                  docker-common \
+                  docker-selinux \
+                  docker-engine
+
+#Install Docker CE
+yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+
+yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+
+yum install -y docker-ce
+
 systemctl enable docker
+systemctl start docker
+systemctl status docker
+
+
+######################
+# Private Registry Server
+######################
 
 #디렉토리 생성
 mkdir -p /app/registry/data
