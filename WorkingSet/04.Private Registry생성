@@ -6,6 +6,8 @@
 # 도커설치
 ######################
 
+vi /etc/fstab
+
 #Uninstall old versions
 yum remove docker \
                   docker-common \
