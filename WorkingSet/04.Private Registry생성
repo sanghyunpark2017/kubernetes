@@ -7,6 +7,8 @@
 ######################
 
 vi /etc/fstab
+systemctl stop firewalld
+
 
 #Uninstall old versions
 yum remove docker \
@@ -174,22 +176,105 @@ docker logs registry
 
 
 vi /etc/hosts
+*********** reg.hmp.com
 
 curl --cacert /certs/domain.crt -X GET https://reg.hmp.com/v2/_catalog
 curl https://reg.hmp.com/v2/_catalog
 
 
+#########################################
+### 이미지빌드 전용(권장) 서버에서 
+### push & pull test
+#########################################
 
-###test
+#docker 설치
+yum remove docker \
+                  docker-common \
+                  docker-selinux \
+                  docker-engine
+
+#Install Docker CE
+yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+
+yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+
+yum install -y docker-ce
+
+systemctl enable docker
+systemctl start docker
+systemctl status docker
+
+#private registry서버 IP등록
+vi /etc/hosts
+*********** reg.hmp.com
+
 docker pull nginx
+docker images
 docker tag nginx reg.hmp.com:443/mynginx
 docker push reg.hmp.com:443/mynginx
 
-#만약, push가 안되면
-docker stop registry
-docker start registry
-> 이 떄 iptable ,, 에러 나면 재부팅 후 재시작 ok
+#여기에 에러 발생
+Get https://reg.hmp.com:443/v2/: x509: certificate signed by unknown authority
 
+#OS레벨에서 인증서 등록 후 갱신하고
+cat << EOF > /etc/pki/ca-trust/source/anchors/hmp.com.crt
+-----BEGIN CERTIFICATE-----
+MIIFhTCCA22gAwIBAgIJANsw2E5PMAemMA0GCSqGSIb3DQEBCwUAMFgxCzAJBgNV
+BAYTAlhYMRUwEwYDVQQHDAxEZWZhdWx0IENpdHkxHDAaBgNVBAoME0RlZmF1bHQg
+Q29tcGFueSBMdGQxFDASBgNVBAMMC3JlZy5obXAuY29tMCAXDTE4MDkwMTAxMzEy
+M1oYDzIxMTgwODA4MDEzMTIzWjBYMQswCQYDVQQGEwJYWDEVMBMGA1UEBwwMRGVm
+YXVsdCBDaXR5MRwwGgYDVQQKDBNEZWZhdWx0IENvbXBhbnkgTHRkMRQwEgYDVQQD
+DAtyZWcuaG1wLmNvbTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAMRk
+uJTC1aWsEIXcOZ7HLPXGdmHePmw2PLncX7wCaHOFU7T2+w9/f5pEsvsTa2WDzweP
+XpTjL0ooIFaJrq9kF77AoNu2EkbXn6AcnuYADO/NCykLrPsZ1eUf/QrcTV5sOMN7
+SMbCiuEQSrb6ZWYxks5mdn0O4rY83WZ3m+jbwslrzyHU1ImaM+RvYdDArC6Nm64M
+PB/KqfyH6N9K/PL27kJ+6d62PUzxkGJqthkKprK3yGbcRdZKtMXo7dsqT7QPTLJx
+VFLJaJ+C6hKdu6uSopvWNEZASvxEgcSxjTcx2k8YzwH+Ygz6+oMveD/Pxy4Fcpnv
+yal2w9H5rW0IgksZK/ZNinxLJOScHGEiDy2dXa3qCWbAZ//zIdS+ejH57YU54yuH
+6HD8gMpLs//DFqOdp+sDpdE+K7qySKoCJ2aD0imeR/4Q9pUhPOJSpbQToZNd6y4q
+eRZ4EJu8pUy0toAGAYCzKEH9Me2CZWFuhTIwhIKY+QnP91DFNHpBTPbnjYGYwaWC
+++YVtcEDhlECnAi9pce8mdF4AKWzmlW1Fx8mkDlrB1tBLDEBGP99iULHN30VERN+
+y3W79mqrqtbbqot9uGFMiPoCZtgPkJfUH2rNgdIsMiRVLbJ6aRJT1++VcGS7euvW
+rjQp2nC+R7WadvoVw/Ru+/9Fe2d0YraOJ3B1UVpbAgMBAAGjUDBOMB0GA1UdDgQW
+BBTxXQvHLuDwV1880DVKjRBnOHZz0zAfBgNVHSMEGDAWgBTxXQvHLuDwV1880DVK
+jRBnOHZz0zAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQBwtCTJ2wot
+YTcJey+krrG1cRjKEtyoZle1qnUEWeUHQeeenq+ZrtqmSnl5K15QKYWoQr9raV2Y
++gGiijmVaAjjrQ4ByZ2yMKZs8u01UY2d8hEYhW9voxKq2vehHhyXhUeV61RzUJqN
+iUrzZZBbyUTafomr6ng/tA0L8LVq62X+GyI/CKuv6iSCE06MrYW6pjaxbKtu7Rmc
+BVmxJfhI+TziWkBFq5pN3IZeD9EsrbyAFvyo94PQupdwV2PV/uwxAbThKAJAgiQ+
+0Qq3S0Xi0aM78opLfAIzftSywedF3uvrnSW0rytTjI5Hu6DykrWraDmzAJJar0Uw
+AStAQHQ7Km97O7CewCaRVkVTA3tf+KguZpXII1vPQ1HRjqSuRrsfs6iPLnTM6xha
+BJXlqhN1g24aIEyWBFEMpM1VBzBERmvHcsdtsGY2DoIx1s5FcAEwcrUEPbf2nrb/
+HmIjeBI3BapXdgCVCe/8918P++M8VfgHuv5HqMQsb4x3PCFBp5QZMYoXYOz4YVUu
++TtV1utnKMvQSoeubY7RiucGSsly9sTL+xfIhV9kCYJmbJ/205lROm+0kKF8/fmm
+beJzNvYb0WJjyh3PkxRKRV4pOYTDca483QmG8Zd7ThJORl4D0IfqyNhQpp1QHenp
+oXZpfG0m68pb6aSzZA0MOvGNp+W6SQSyOw==
+-----END CERTIFICATE-----
+EOF
+
+update-ca-trust
+
+#도커 재실행하여 신뢰된 인증서 반영시키면
+systemctl restart docker
+
+#업로드 정상
+docker push reg.hmp.com:443/mynginx
+
+#로컬 이미지 지우고 다운로드도 정상
+docker rmi nginx
+docker rmi reg.hmp.com:443/mynginx
+docker images
+
+docker pull reg.hmp.com:443/mynginx
+docker images
+
+
+#이 서버는 이미지 빌더로써 사용하고, 같은 방법으로 kubernetes worker node에 동일하게 반영한다.
+#kube admin(controller)는 제외
 
 
 ################################
@@ -232,26 +317,33 @@ oXZpfG0m68pb6aSzZA0MOvGNp+W6SQSyOw==
 -----END CERTIFICATE-----
 EOF
 
-#갱신
+#인증서 갱신
 update-ca-trust
 
+#도커에 반영
 systemctl restart docker
 
 vi /etc/hosts
 ******  reg.hmp.com
 
+#다운로드 테스트 후 테스트 이미지 삭제
+#kubernetes worker는 다운로드만 테스트해도 됨
 
 docker pull reg.hmp.com:443/mynginx
 docker images
-docker rmi
 
---반복--
+docker rmi reg.hmp.com:443/mynginx
+docker images
+
+
+--모든 WORKER에 반복--
 
 
 ################################
 # Kubernetes - Controllers(Masters)
 ################################
 
+#Controllers(Masters)는 관리만 처리되며, private registry서버와는 worker가 
  
 vi /root/test-private-reg.yaml
 ------------------------------------------------------------------------------------------------------------------------------
