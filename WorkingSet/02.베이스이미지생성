@@ -2,7 +2,8 @@
 #########################
 # 목적
 #########################
--이미지 빌드 전용서버에서 
+-이미지 빌드 전용서버에서 진행
+-Centos7 이미지를 만들고 여기 위에 아파치, 톰캣 순서대로 설치함
 -컨테이너의 특/장점을 활용하기 보다는 이를 VM서버처럼 사용하는 것을 테스트함
 -모든 변경의 요소(config file)와 읽기요소(logs)를 export하여 컨테이너 안으로 들어갈 일이 없게끔 함
 
@@ -16,7 +17,6 @@
 2) 위 기존OS이미지를 가지고 시스템로그를 elasticsearch로 빼는 filebeat 등 ADDON 작업을 한다.
 ADDON 작업은 현재로서는 filebeat만 있음(데몬구동 -> SSHD+FILEBEAT)
 이 것을 BASE-OS 이미지로 사용한다.
-
 
 3) INIT-OS 또는 BASE-OS 위에 아파치를 소스컴파일 한다.
 http only, http&https 2가지 버전으로 하며 
@@ -36,16 +36,9 @@ BaseCentos7-Java6-Tomat7S : Tomcat 1대
 BaseCentos7-Java7-Tomat8M : Tomcat 2대
 
 
-#########################
-#기본OS 이미지 생성 기본 개념
-#########################
-
-DOCKER에서 
--DockerHub에서 Centos7 이미지 가져온다
--Shell로 들어가서 이것 저것 설치한다.
-
-이 것을 Private Hub에 올려 놓고, Kubernetes에서 동작하는지 본다
-
+################################
+#(PASS)기본OS 이미지 생성 기본 개념
+################################
 
 1. Centos 버전의 DOCKERFILE은 공식 사이트에 있음
 #https://hub.docker.com/_/centos/
@@ -54,10 +47,10 @@ DOCKER에서
 #https://github.com/docker-library/docs/tree/master/centos
 
 #이렇게 그냥 가져와도 되나 추가 할 것들이 많으니
-docker pull centos:6.9
-docker pull centos:7
+#docker pull centos:6.9
+#docker pull centos:7
 
-#Dockerfile안에서 가져오면서 (아래 예는 systemd 기반의 OS이미지임)
+#Dockerfile안에서 systemd 기반의 CentOS(systemd 기반이어야 spache 등 기동 가능)
 -----------------------------------------------------------------------------------------------
 cat << EOF > /root/Dockerfile
 FROM centos:7
@@ -82,7 +75,7 @@ docker build --rm -t local/c7-systemd .
 
 docker images
 
-#이 것을 가져다가 다시 만든다
+#이렇게 로컬디스크에 만든 것에다가 각종 툴 들을 설치한다.
 -----------------------------------------------------------------------------------------------
 cat << EOF > /root/Dockerfile
 FROM local/c7-systemd
@@ -115,25 +108,30 @@ docker run -it local/c7-systemd-httpd
 #검색하면 centos official이 있는데 이 것은 항상 최신의 이미지임
 docker search centos
 
-#버전을 지정해서 받음 ( repositary "docker.io"는 생략해도 되며, Centos OLD 버전도 됨)
-docker pull --name "mycentos7" docker.io/centos:7
+#centos만 지정하면 최신버전이고, 버전을 명시하면 그 버전으로 다운로드함
+#docker pull --name "mycentos7" docker.io/centos:7 #docker-ce 버전은 "--name"옵션을 지원하지 않음
+
+docker pull docker.io/centos:7
 docker images
 
 #로컬에 내려 받은 것을 실행하고 RUNNING 되는지 보면
-docker run --name "mycentos7" docker.io/centos
+#docker run --name "mycentos7" docker.io/centos
+docker run --name "mycentos7" centos:7
 docker ps
 
 #실행되지 못하고 off 상태에 있고, exit 코드는 0인 것을 알 수 있음
 docker ps -a
 
-#이러한 OS컨테이너는 COMMAND로 데몬이 아닌(없으므로) "/bin/bash" 쉘을 지정했기 때문인데
-#방금 만든 컨테이너를 지우고
+#이러한 OS컨테이너는 COMMAND로 데몬이 아닌(없으므로) "/bin/bash" 쉘을 지정했기 때문임
+#그래서 방금 만들어서 EXIT 상태에 있는 컨테이너를 지우고
 docker rm mycentos7
 
-#처음에 run 할 때 대화형으로 만들어 주면 되며, 컨테이너 안의 쉘로 들어가 있기에 exit로 나온다.
+#처음에 run 할 때 대화형으로 만들어 주며, 대화형이므로 exit로 나온다.
 #exit 나올 때 COMMAND가 종료된 것이므로 컨테이너는 종료된다.
-#TIMEZONE은 서울로 맞춘다.
-docker run -it -e TZ=Asia/Seoul --name "mycentos7" docker.io/centos:7 
+#또한 TIMEZONE은 서울로 맞춘다.
+#docker run -it -e TZ=Asia/Seoul --name "mycentos7" docker.io/centos:7 
+
+docker run -it -e TZ=Asia/Seoul --name "mycentos7" centos:7 
 exit
 
 #실행포인트가 대화(쉘)이므로 exit로 나오면 실행중이던 컨테이너가 종료되며 종료된 흔적 확인은
@@ -143,7 +141,7 @@ docker ps -a
 docker start mycentos7
 docker ps
 
-#언제든지 쉘 안으로 들어가고 나오고 할 수 있다.
+#이제 언제든지 쉘 안으로 들어가고 나올 수 할 수 있다.
 docker exec -it mycentos7 /bin/bash
 
 #크기 93MB / 293MB
@@ -152,6 +150,8 @@ docker ps -s
 ########################################
 # 설치 - yum
 ########################################
+
+#각종 툴 설치
 
 docker exec -it mycentos7 /bin/bash
 
