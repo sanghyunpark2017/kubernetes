@@ -166,6 +166,25 @@ yum groupinstall -y "Development tools"
 yum install -y expat-devel
 yum install -y gcc*
 
+#파일백업 스크립트
+cd /sbin
+vi bk
+------------------------------------------------------------
+#CP.ALL.ENABLE
+
+for i in $*
+do
+        if [ -f $i ]
+        then
+                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
+        else
+                echo "`basename $0` <filenames>"
+        fi
+done
+------------------------------------------------------------
+
+chmod 755 bk
+
 
 ########################################
 # 설치 - OpenSSL
