@@ -14,12 +14,12 @@ mkdir -p /app/registry/data
 mkdir -p /certs
 
 #(PASS)인증서 자체 발행
-cd /certs
-openssl req  -newkey rsa:4096 -nodes -sha256 -keyout /certs/domain.key -x509 -days 36500 -out /certs/domain.crt
->>your name or your hostname : reg.hmp.com
+#cd /certs
+#openssl req  -newkey rsa:4096 -nodes -sha256 -keyout /certs/domain.key -x509 -days 36500 -out /certs/domain.crt
+#>>your name or your hostname : reg.hmp.com
 
 
-#기 발행한 100년 만기 인증서 (재사용)
+#"reg.hmp.com" 100년 만기 인증서 (재사용)
 ##############
 # domain.crt
 ##############
