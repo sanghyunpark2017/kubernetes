@@ -2,8 +2,9 @@
 # 아파치웹서버(커스터마이징)
 ########################################
 
+#앞서 만든 OS 베이스 이미지위에 아파치 설치한다
 #이 것 역시 시작 COMMAND가 /bin/sh이므로 처음에는 대황형으로 만든다.
-docker run -it --name "myapache24" localreg:5000/mycentos7:base
+docker run -it --name "myapache24" reg.hmp.com:443/mycentos7:base
 
 #대황형을 빠져나온 후 다시 start 해준다.
 exit
@@ -15,11 +16,6 @@ docker exec -it myapache24 /bin/bash
 
 #아파치 설치 한다.
 
-~~~~~~~~~~~~~~ 이전 문서 ~~~~~~~~~~
-
-#Centos7에 HTTP Only Single Apache 설치
-#컨테이너 안으로 들어간 후
- 
 
 #####################
 # PCRE 설치
