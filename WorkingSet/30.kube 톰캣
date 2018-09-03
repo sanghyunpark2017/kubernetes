@@ -1,10 +1,68 @@
 
 
+vi /root/demo-tomcat7java6.yaml
+-----------------------------------------------------------------------------------------------
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: demo-tomcat7java6-deployment
+spec:
+  selector:
+    matchLabels:
+      app: demo-tomcat7java6
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: demo-tomcat7java6
+    spec:
+      containers:
+      - name: demo-tomcat7java6
+        image: reg.hmp.com:443/mytomcat7java6:base
+        command: ["/app/tomcat7/bin/startup.sh"]
+        ports:
+        - name: port8005
+          containerPort: 8005
+        - name: port8009
+          containerPort: 8009
+        - name: port8080
+          containerPort: 8080
+-----------------------------------------------------------------------------------------------
+
+#톰캣은 wasadm 계정으로 시작해야
+
+kubectl apply -f /root/demo-tomcat7java6.yaml
 
 
+#runnig되고 있는 worker노드에서 실행
+journalctl -f -u docker
 
 
-
+vi /root/demo-mytomcat7java6-svc.yaml
+-----------------------------------------------------------------------------------------------
+kind: Service
+apiVersion: v1
+metadata:
+  name: demo-mytomcat7java6-svc
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: demo-mytomcat7java6
+  ports:
+  - name: port8005
+    protocol: TCP
+    port: 8005
+    nodePort: 30006
+  - name: port8009
+    protocol: TCP
+    port: 8009
+    nodePort: 30007
+  - name: port8080
+    protocol: TCP
+    port: 8080
+    nodePort: 30008
+-----------------------------------------------------------------------------------------------
 
 
 
