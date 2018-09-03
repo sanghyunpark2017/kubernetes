@@ -29,7 +29,13 @@ spec:
           containerPort: 8080
 -----------------------------------------------------------------------------------------------
 
-#톰캣은 wasadm 계정으로 시작해야
+#톰캣은 wasadm 계정으로 시작해야....
+
+>> root  계정 실행 여부
+>> mod_jk에서 8005포트가 아닌 apache --> 8080 여부 : tomcat컨테이너당 node port를 여러개 만들게됨
+
+
+
 
 kubectl apply -f /root/demo-tomcat7java6.yaml
 
