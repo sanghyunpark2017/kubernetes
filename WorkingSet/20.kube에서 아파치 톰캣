@@ -42,24 +42,58 @@ spec:
     spec:
       containers:
       - name: demo-myapache24
-        image: localreg:5000/myapache24:base
+        image: reg.hmp.com:443/myapache24:base
+        command: ["/app/apache24/bin/apachectl", "-k", "start"]
+#        postStart:
+#          httpGet:
+#            path: http://localhost/test.html
+#            port: 80
+#        preStop:
+#          exec:
+#            command: ["/app/apache24/bin/apachectl", "-k", "greceful-stop"]
         ports:
         - containerPort: 80
 -----------------------------------------------------------------------------------------------
 
+#(재시도)
+kubectl delete deployment demo-myapache24-deployment
+
 kubectl apply -f demo-myapache24.yaml
-#kubectl delete -f demo-myapache24.yaml
+
 
 kubectl get deployments demo-myapache24-deployment
-
 kubectl get pods
 
 kubectl describe deployments demo-myapache24-deployment
 
 
 kubectl get pods
-kubectl describe pods *****************
+kubectl describe pods
+
+
+#runnig되고 있는 worker노드에서 실행
 journalctl -f -u docker
+
+
+>>>>>>>>> DOCKER에 CMD가 "/bin/bahs"인데
+이것을 놔둔채 kube에서 command로 override해보려고 했으나 안되는듯;;
+그럼 KUBE에서 사용할 POD들의 이미지들은 결국  DockerFile로 만들어야 하나??
+
+apache이미지를 하나 내려 받아서 CMD가 apachectl 인 것
+들어가서 수동으로 openssh 빌드하고, 아파치새로 빌드하고,, 물론 CMD 위치는 맞춰주고
+WEB ROOT는 커스터마이징하고
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
