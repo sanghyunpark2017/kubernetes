@@ -142,6 +142,24 @@ curl https://reg.hmp.com/v2/_catalog
 
 
 
+#다운로드 및 테스트
+docker run -it --name "mytomcat7java6" reg.hmp.com:443/mytomcat7java6:base
+exit
+
+docker start mytomcat7java6
+docker exec -it mytomcat7java6 /bin/bash
+cd /app/tomcat7/bin
+./startup.sh
+exit
+
+docker ps
+
+
+
+
+
+
+
 
 
 
