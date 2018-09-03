@@ -148,8 +148,10 @@ exit
 
 docker start mytomcat7java6
 docker exec -it mytomcat7java6 /bin/bash
+su - wasadm
 cd /app/tomcat7/bin
 ./startup.sh
+exit
 exit
 
 docker ps
