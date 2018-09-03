@@ -247,46 +247,34 @@ docker stop myapache24
 docker rm myapache24
 
 
-#(PASS)로컬에 commit해둔 이미지를 외부포트로 연결 실행
-#docker run -it -p 80:80 --name "myapache24" localreg:5000/myapache24:base
-#/app/apache24/bin/apachectl start
-#exit
-#docker start myapache24
+#로컬에 commit해둔 이미지를 외부포트로 연결 실행
+docker run -it -p 80:80 --name "myapache24" reg.hmp.com:443/myapache24:base
+/app/apache24/bin/apachectl start
 
-#(PASS)도커호스트서버의 80포트와 컨테이너 내부의 80포트가 서로 매핑됨을 확인 한 후
-#docker ps
+#외부PC에서 호출 OK
+http://DOCKERHOST
+http://DOCKERHOST-IP/hello.html
 
-#(PASS)외부PC에서 호출 OK
-#http://DOCKERHOST
-#http://DOCKERHOST-IP/hello.html
+#종료하면 컨테이너 자동 stoped (대화형이므로)
+exit
+
+
 
 #이제 업로드
 docker push reg.hmp.com:443/myapache24:base
 
 curl https://reg.hmp.com/v2/_catalog
 
-#아파치 표준 이미지 생성 완료
 
-#업로드된 이미지는 시작 명령을 "/bin/bash"로 기억하고 있으나
-#kubernetes에서는 컨테이너가 기억하고 있는 COMMAND를 무시하고(OVERRIDE) 실행 할 수 있으며,
-#이 때 apachectl 실행으로 변경해주면 됨
-#https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
-예)
----------------------------------------------------------------------------------------------
-apiVersion: v1
-kind: Pod
-metadata:
-  name: command-demo
-  labels:
-    purpose: demonstrate-command
-spec:
-  containers:
-  - name: command-demo-container
-    image: debian
-    command: ["printenv"]
-    args: ["HOSTNAME", "KUBERNETES_PORT"]
-  restartPolicy: OnFailure
----------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+#아파치 표준 이미지 생성 및 완료
 
 
 ##########################################
