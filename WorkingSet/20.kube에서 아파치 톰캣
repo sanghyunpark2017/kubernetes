@@ -43,7 +43,7 @@ spec:
       containers:
       - name: demo-myapache24
         image: reg.hmp.com:443/myapache24:base
-        command: ["/app/apache24/bin/apachectl", "-k", "start"]
+        command: ["/app/apache24/bin/apachectl", "-D", "FOREGROUND"]
 #        postStart:
 #          httpGet:
 #            path: http://localhost/test.html
@@ -54,6 +54,11 @@ spec:
         ports:
         - containerPort: 80
 -----------------------------------------------------------------------------------------------
+
+#command: ["/app/apache24/bin/apachectl", "-k", "start"] >> 에러발생
+#WHY??? 
+
+
 
 #(재시도)
 kubectl delete deployment demo-myapache24-deployment
@@ -74,55 +79,18 @@ kubectl describe pods
 #runnig되고 있는 worker노드에서 실행
 journalctl -f -u docker
 
+=====================================================================================
+Apachectl -D FOREGROUND로 해결했으나,,
 
->>>>>>>>> DOCKER에 CMD가 "/bin/bahs"인데
+myapache24가 DOCKER에 CMD가 "/bin/bahs"인데
 이것을 놔둔채 kube에서 command로 override해보려고 했으나 안되는듯;;
 그럼 KUBE에서 사용할 POD들의 이미지들은 결국  DockerFile로 만들어야 하나??
 
 apache이미지를 하나 내려 받아서 CMD가 apachectl 인 것
 들어가서 수동으로 openssh 빌드하고, 아파치새로 빌드하고,, 물론 CMD 위치는 맞춰주고
 WEB ROOT는 커스터마이징하고
+=====================================================================================
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-vi /root/demo-mycentos7.yaml
------------------------------------------------------------------------------------------------
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
-kind: Deployment
-metadata:
-  name: mycentos7-deployment
-spec:
-  selector:
-    matchLabels:
-      app: mycentos7
-  replicas: 1 # tells deployment to run 2 pods matching the template
-  template:
-    metadata:
-      labels:
-        app: mycentos7
-    spec:
-      containers:
-      - name: mycentos7
-        image: localreg:5000/mycentos7:base
-        ports:
-        - containerPort: 80
------------------------------------------------------------------------------------------------
-
-kubectl apply -f demo-mycentos7.yaml
 
 
 
