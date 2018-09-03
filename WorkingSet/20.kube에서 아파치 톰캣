@@ -3,32 +3,24 @@
 #이제 부터는 이 것들을 kube 환경에서 구동되게끔 가져오고
 #web, was각자의 service를 만든 후 테스트 페이지 호출
 
-cat << EOF >> /etc/hosts
-10.10.64.89  localreg
-EOF
+############################
+# kube Worker 노드
+############################
 
-bk /etc/docker/daemon.json
-cat << EOF > /etc/docker/daemon.json
-{
-  "insecure-registries" : ["localreg:5000"]
-}
-EOF
+#hosts파일에 private registry 서버 등록
+vi /etc/hosts
 
-#서버재부팅 (다음 번에는 reg서버는 secure하게 구성하자)
-
-#insecure로 가져오는지 확인
-docker pull localreg:5000/mycentos7:base
-
-
+#insecure로 가져오는지 확인 후 이미지는 놔둠
+docker pull reg.hmp.com:443/mycentos7:base
 
 
 ############################
+# kube Admin 노드
 # myapache24 + kube config
 ############################
 
 #docker CMD를 kube CMD로 변경
 #쉽지 않으면, 다시 docker 이미지 안에 구동 스크립트를 넣어서 이미지화 할 수도 있음
-
 
 #설마하니.. CMD 지정해야 하나?
 
