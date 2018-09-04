@@ -36,9 +36,11 @@ spec:
 #        command: ["sh", "-c", "/app/tomcat7/bin/startup.sh"] #error
 #        command: ["sh", "-c", "/app/tomcat7/bin/catalina.sh", "start"] #error
 
-#but, tomcat 이미지 생성 당시 tomcat 환경변수를 wasadm에 넣어서 발생한 문제임
-#root계정에도 java와 tomcat 환경변수 넣어서 시도
+#but, tomcat 이미지 생성 당시 tomcat 환경변수를 wasadm에 넣어서 발생한 문제인 것으로 추정됨
+#startup_wasadm.sh와 shutdown_wasadm 파일을 만들고
+#su - wasadm -c "/app/tomcat7/bin/startup.sh
 
+command: ["/app/tomcat7/bin/startup_wasadm.sh"]
 
 
 
