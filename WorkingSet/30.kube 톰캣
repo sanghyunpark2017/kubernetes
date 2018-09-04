@@ -45,16 +45,15 @@ command: ["sh", "-c", "/app/tomcat7/bin/wasadm_startup.sh"] #error
 command: ["/app/tomcat7/bin/wasadm_startup.sh", "run"] #error
 command: ["/bin/bash", "-c", "/app/tomcat7/bin/wasadm_startup.sh"]
 
+root계정 .bashrc, .bash_profile 에 환경변수 등록해도 KUBE에서 실행하면 (DOCKER는 잘됨)
+"Neither the JAVA_HOME nor the JRE_HOME environment variable is deinfed
+At least one of these environment variable is needed to run this program"
 
-tomcat은 pulic container 사용한다.
-
-
-
-
-
-
+tomcat을 manual하게 구성한 사례가 없는 듯 함
+tomcat은 pulic container 사용하는 것으로 
 
 
+-END-
 
 
 
@@ -77,35 +76,12 @@ journalctl -f -u docker
 #모든 worker에서 실행한채, deployment 재생성하면서 로그확인
 journalctl -u kubelet
 
+kubectl describe pod
+
 kubectl log -f POD
 
 
 
-vi /root/demo-mytomcat7java6-svc.yaml
------------------------------------------------------------------------------------------------
-kind: Service
-apiVersion: v1
-metadata:
-  name: demo-mytomcat7java6-svc
-  namespace: default
-spec:
-  type: NodePort
-  selector:
-    app: demo-mytomcat7java6
-  ports:
-  - name: port8005
-    protocol: TCP
-    port: 8005
-    nodePort: 30006
-  - name: port8009
-    protocol: TCP
-    port: 8009
-    nodePort: 30007
-  - name: port8080
-    protocol: TCP
-    port: 8080
-    nodePort: 30008
------------------------------------------------------------------------------------------------
 
 
 
