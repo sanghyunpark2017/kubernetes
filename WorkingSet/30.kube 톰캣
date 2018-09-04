@@ -40,7 +40,17 @@ spec:
 #startup_wasadm.sh와 shutdown_wasadm 파일을 만들고
 #su - wasadm -c "/app/tomcat7/bin/startup.sh
 
-command: ["/app/tomcat7/bin/startup_wasadm.sh"]
+command: ["/app/tomcat7/bin/wasadm_startup.sh"] #error
+command: ["sh", "-c", "/app/tomcat7/bin/wasadm_startup.sh"] #error
+command: ["/app/tomcat7/bin/wasadm_startup.sh", "run"] #error
+command: ["/bin/bash", "-c", "/app/tomcat7/bin/wasadm_startup.sh"]
+
+
+tomcat은 pulic container 사용한다.
+
+
+
+
 
 
 
