@@ -77,6 +77,9 @@ journalctl -f -u docker
 #모든 worker에서 실행한채, deployment 재생성하면서 로그확인
 journalctl -u kubelet
 
+kubectl log -f POD
+
+
 
 vi /root/demo-mytomcat7java6-svc.yaml
 -----------------------------------------------------------------------------------------------
