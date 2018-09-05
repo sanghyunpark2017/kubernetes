@@ -1,8 +1,9 @@
 
 #Setup-k8s_v1.11 환경 위에서 테스트
 
-1) worker node에 nfs 클라이언트 설치
-
+################################
+# worker node에 nfs 클라이언트 설치
+################################
 mkdir -p /mnt/public
 mkdir -p /mnt/private
 
@@ -32,6 +33,93 @@ ln -s /mnt/private /vol
 
 cd /vol
 ll
+
+
+################################
+# 아파치웹서버 생성
+################################
+
+## httpd.conf파일을 export 할 경우 nfs볼륨에 httpd.conf파일을 가져다 놔야 한다.
+## 이 파일이 없으면 pod 구동 에러
+
+
+vi /root/demo-httpd.yaml
+------------------------------------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-httpd-deployment
+  namespace: default
+  labels:
+    app: demo-httpd
+    tier: frontend
+    role: making
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-httpd
+      tier: frontend
+      role: making
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: demo-httpd
+        tier: frontend
+        role: making
+        deployment: v1
+    spec:
+      containers:
+      - name: demo-httpd-deployment-pod
+        image: docker.io/httpd:2.4
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "200Mi"
+          requests:
+            memory: "100Mi"
+        command: [-]
+        args: [-]
+        volumeMounts:
+        - mountPath: /usr/local/apache2/conf/httpd.conf
+          name: file1
+        - mountPath: /usr/local/apache2/htdocs
+          name: directory1
+      volumes:
+      - name: file1
+        hostPath:
+          path: /vol/private/demo-httpd/usr/local/apache2/conf/httpd.conf
+          type: File
+      - name: directory1
+        hostPath:
+          path: /vol/private/demo-httpd/usr/local/apache2/htdocs
+          type: Directory
+------------------------------------------------------------------------------------------------------------
+
+#worker 중 1대에서 디렉토리 생성
+mkdir -p /vol/private/demo-httpd/usr/local/apache2
+mkdir -p /vol/private/demo-httpd/usr/local/apache2/htdocs
+
+
+kubectl delete -f demo-httpd.yaml
+
+kubectl apply -f demo-httpd.yaml
+
+kubectl get deployment 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
