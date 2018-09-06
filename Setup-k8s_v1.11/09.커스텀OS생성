@@ -135,18 +135,5 @@ docker push reg.hmp.com:443/mycentos7beta:1
 curl https://reg.hmp.com/v2/_catalog
 
 
-#로컬이미지 삭제하고 Private Resistry에서 다시 가져와 본다
-
-docker stop mycentos7beta
-docker rm mycentos7beta
-docker rmi reg.hmp.com:443/mycentos7beta:1
-
-docker run -dit --name "mycentos7beta" reg.hmp.com:443/mycentos7beta:1
-
-docker exec -it mycentos7beta /bin/bash
-date
-openssl version
-exit
-
 
 
