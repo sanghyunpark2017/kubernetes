@@ -81,6 +81,22 @@ docker start hmpweb
 docker exec -it hmpweb /bin/bash
 
 
+docker stop hmpweb
+docker rm hmpweb
+
+mkdir -p /root/httpd/conf
+cd /root/httpd/conf
+
+#초기 파일 넣엊고
+vi /root/httpd/conf/httpd.conf 
+
+#컨테이너 www-data 그룹 ID인 33으로 맞춘다
+chown -R root:33 /root/httpd
+
+docker run -dit -v /root/httpd/conf/httpd.conf:/usr/local/apache2/conf/httpd.conf --name hmpweb httpd 
+
+
+
 
 
 
