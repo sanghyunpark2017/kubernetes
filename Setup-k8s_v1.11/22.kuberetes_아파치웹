@@ -1,3 +1,17 @@
 
 
 
+###################################
+# (1회성)아파치웹24 기본 COFNIG파일
+###################################
+
+mkdir /vol/public/common/apache24conf
+cd /vol/public/common/apache24conf
+sftp -P 2189 DCinfra@10.10.38.240
+cd /uploads/Users/kubernetes
+get apacheconf.tar.gz
+exit
+ll
+
+tar 
+
