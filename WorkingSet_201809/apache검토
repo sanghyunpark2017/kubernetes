@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
       - name: demo-httpd-deployment-pod
-        image: docker.io/httpd:2.4
+        image: reg.hmp.com/myapache24
         ports:
         - containerPort: 80
         resources:
