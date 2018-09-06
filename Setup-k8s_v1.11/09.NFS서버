@@ -1,0 +1,69 @@
+
+
+
+
+HostPath는 노드서버의 파일을 컨테이너가 읽어서 처리하기 위한 것으로 설명하고 있다.
+NFS는 shared fs 목적이나, 예시로는 여러개를 사용해야 하는 것으로 (비효율적)
+HostPath+NFS 조합하여, 컨테이너가 읽기/쓰기 하는 것으로(이에 따른 성능 등등 차이는 없는 듯)
+
+PersistentVolume과 PersistentVolumeClaim은 스토리지 추상화 하는 개념으로
+미리 선언 후에 동적으로 pod에 붙일 수도 있는 특징이 있다. (for autoscaleout)
+디스크 생성/삭제가 유연한 클라우드 스토리지 사용에 적합 할 수 있음
+나중에 클라우드 전환을 위해서라면 굳이 써도 될 듯
+
+외부볼륨을 갖는 컨테이너를 autoscaleout 할 떄는 공통 파일시스템을 사용하는 것에 만 사용하자
+동적으로 pod생성 될 때 dynamic pvc를 사용할 순 있지만 여기에 컨텐츠를 가져다 놓기가 어려울 듯
+(어떤 식이로든 방법은 있겠으나 스마트한 방법은 아닐 것이므로 pass)
+
+팀2. scale 0으로 하면 latest image를 가져온다. 곧 바로 다시 1이상으로 지정한다.
+kubectl scale --replicas=0 deploy/my-app && kubectl scale --replicas=1 deploy/my-app
+
+
+
+####################
+#NFS서버 설치
+####################
+
+##1.NFS서버 설치
+
+yum -y install nfs*
+
+systemctl enable rpcbind
+systemctl enable nfs-server
+systemctl enable nfs-lock
+systemctl enable nfs-idmap
+
+systemctl start rpcbind
+systemctl start nfs-server
+systemctl start nfs-lock
+systemctl start nfs-idmap
+
+mkdir -p /nfs/public
+mkdir -p /nfs/private
+
+chmod -R 777 /nfs/public
+chmod -R 777 /nfs/private
+
+vi /etc/exports
+/nfs/public 10.10.64.0/24(rw,sync,no_root_squash,no_all_squash)
+/nfs/private 10.10.64.0/24(rw,sync,no_root_squash,no_all_squash)
+
+yum install firewalld
+systemctl enable firewalld
+
+systemctl start firewalld
+
+firewall-cmd --permanent --zone=public --add-service=nfs
+firewall-cmd --permanent --zone=public --add-service=mountd
+firewall-cmd --permanen --zone=public --add-service=rpc-bind
+firewall-cmd --reload
+systemctl status firewalld
+
+systemctl restart  rpcbind.service
+systemctl status rpcbind.service
+
+systemctl restart nfs-server
+systemctl restart nfs-lock
+systemctl restart nfs-idmap
+
+showmount -e 10.10.64.90
