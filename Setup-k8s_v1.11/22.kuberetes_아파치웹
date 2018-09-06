@@ -1,6 +1,5 @@
 
 
-
 ###################################
 # (1회성)아파치웹24 기본 COFNIG파일
 ###################################
@@ -13,5 +12,29 @@ get apacheconf.tar.gz
 exit
 ll
 
-tar 
+tar xvf apacheconf.tar.gz
+
+cd /vol/public/common/apache24conf/app/apache24/conf
+ll
+
+ll /vol/public/common/apache24conf/app/apache24/conf/httpd.conf
+ll /vol/public/common/apache24conf/app/apache24/conf/extra/httpd-vhosts.conf
+
+
+################################
+# kubernetes 아파치웹서버 생성(사전 볼륨작업)
+################################
+
+mkdir -p /vol/private/demo-httpd/app/apache24/conf
+mkdir -p /vol/private/demo-httpd/logs
+
+#파일로 매핑할 것들만 넣어준다
+cd /vol/private/demo-httpd/app/apache24/conf
+cp /vol/public/common/apache24conf/app/apache24/conf/httpd.conf  . 
+
+
+
+
+
+
 
