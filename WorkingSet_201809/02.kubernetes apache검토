@@ -45,8 +45,8 @@ ll
 ## httpd.conf파일을 볼륨 연결 할 떄 nfs볼륨에 httpd.conf파일을 가져다 놔야 한다.
 ## 볼륨연결하려면 먼저 없이 해본 후에 연결한다
 
-vi /root/demo-httpd.yaml
 ------------------------------------------------------------------------------------------------------------
+cat << EOF > /root/demo-httpd.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
       - name: demo-httpd-deployment-pod
-        image: reg.hmp.com/myapache24
+        image: reg.hmp.com/myapache24:base
         ports:
         - containerPort: 80
         resources:
@@ -83,36 +83,57 @@ spec:
             memory: "200Mi"
           requests:
             memory: "100Mi"
-        command: [-]
-        args: [-]
+        command: ["/app/apache24/bin/apachectl", "-D", "FOREGROUND"]        
+#        args: [-]
         volumeMounts:
-        - mountPath: /usr/local/apache2/conf/httpd.conf
+        - mountPath: /app/apache24/conf/httpd.conf
           name: file1
-        - mountPath: /usr/local/apache2/htdocs
+        - mountPath: /app/webapps
           name: directory1
+        - mountPath: /logs/web
+          name: directory2          
       volumes:
       - name: file1
         hostPath:
-          path: /vol/private/demo-httpd/usr/local/apache2/conf/httpd.conf
+          path: /vol/private/demo-httpd/app/apache24/conf/httpd.conf
           type: File
       - name: directory1
         hostPath:
-          path: /vol/private/demo-httpd/usr/local/apache2/htdocs
+          path: /vol/private/demo-httpd/app/webapps
           type: Directory
+      - name: directory2
+        hostPath:
+          path: /vol/private/demo-httpd/logs/web
+          type: Directory
+EOF
+
 ------------------------------------------------------------------------------------------------------------
 
 #worker 중 1대에서 디렉토리 생성
-mkdir -p /vol/private/demo-httpd/usr/local/apache2/conf
-mkdir -p /vol/private/demo-httpd/usr/local/apache2/htdocs
+mkdir -p /vol/private/demo-httpd/app/apache24/conf
+mkdir -p /vol/private/demo-httpd/app/webapps
+mkdir -p /vol/private/demo-httpd/logs/web
+
+#conf 디렉토리 밑에 httpd.conf 파일생성
+cd /vol/private/demo-httpd/app/apache24/conf
 
 
-kubectl delete -f demo-httpd.yaml
+kubectl delete -f /root/demo-httpd.yaml
 
-kubectl apply -f demo-httpd.yaml
 
+kubectl apply -f /root/demo-httpd.yaml
 kubectl get deployment 
-
 kubectl get pod -o wide
+
+
+#POD상세로그
+kubectl logs -f <POD>
+
+
+
+cd /vol/private/demo-httpd
+
+
 
 
 ################################
