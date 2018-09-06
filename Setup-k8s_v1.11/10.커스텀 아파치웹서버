@@ -16,7 +16,7 @@ docker run -dit --name "myapache24beta" reg.hmp.com:443/mycentos7beta:1
 docker exec -it myapache24beta /bin/bash
 date
 openssl version
-exit
+
 
 
 ########################################
