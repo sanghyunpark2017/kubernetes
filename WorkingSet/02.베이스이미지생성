@@ -221,19 +221,19 @@ exit
 #https://www.techrepublic.com/article/how-to-commit-changes-to-a-docker-image/
 #이미지 이름은 Local Resistry에 업로드 할 수 있는 naming(repository:tag)으로 한다
 #hosts 파일에 localreg 등록
-docker commit CONTAINER_ID reg.hmp.com:443/mycentos7:base
+docker commit CONTAINER_ID reg.hmp.com:443/mycentos7beta:1
 
 #이미지가 저장되었는지 확인되면 업로드 한다
 docker images
-docker push reg.hmp.com:443/mycentos7:base
+docker push reg.hmp.com:443/mycentos7beta:1
 
 #업로드확인
 curl https://reg.hmp.com/v2/_catalog
 
 
 #로컬이미지 삭제하고 Private Resistry에서 다시 가져와 본다
-docker rmi reg.hmp.com:443/mycentos7:base
-docker pull reg.hmp.com:443/mycentos7:base
+docker rmi reg.hmp.com:443/mycentos7beta:1
+docker pull reg.hmp.com:443/mycentos7beta:1
 
 
 ########################################
