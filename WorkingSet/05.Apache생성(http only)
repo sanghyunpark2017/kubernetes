@@ -151,8 +151,8 @@ Include conf/extra/httpd-default.conf
 ### Main server configuration
 ServerName localhost:80
 
-ErrorLog "|/app/apache24/bin/rotatelogs logs/error.%y%m%d.log 86400 540"
-CustomLog "|/app/apache24/bin/rotatelogs logs/access.%y%m%d.log 86400 540" common
+ErrorLog "|/app/apache24/bin/rotatelogs /logs/error.%y%m%d.log 86400 540"
+CustomLog "|/app/apache24/bin/rotatelogs /logs/access.%y%m%d.log 86400 540" common
 
 <Directory "/app/webapps">
     Options IncludesNoExec
@@ -190,8 +190,8 @@ cat << EOF > /app/apache24/conf/extra/httpd-vhosts.conf
     DocumentRoot "/app/webapps"
     ServerName testweb.test.co.kr
     ServerAlias testweb.test.co.kr
-    ErrorLog "|/app/apache24/bin/rotatelogs /logs/web/aafmig.error.%Y-%m-%d.log 86400 540"
-    CustomLog "|/app/apache24/bin/rotatelogs /logs/web/aafmig.access.%Y-%m-%d.log 86400 540" combined
+    ErrorLog "|/app/apache24/bin/rotatelogs /logs/web/error.%Y-%m-%d.log 86400 540"
+    CustomLog "|/app/apache24/bin/rotatelogs /logs/web/access.%Y-%m-%d.log 86400 540" combined
     LogLevel warn
 </VirtualHost>
 EOF
@@ -265,6 +265,9 @@ curl 172.x.x.x/hello.html
 ##########################################
 # 이미지로 저장 후 Private Registry업로드
 ##########################################
+
+#commit 하기 전에 불필요한 로그 파일 정리 할 것
+
 docker commit CONTAINER_ID reg.hmp.com:443/myapache24:base
 
 #지금 구동 중이던 컨테이너 삭제
