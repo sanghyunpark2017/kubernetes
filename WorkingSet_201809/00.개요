@@ -8,6 +8,11 @@
 -httpd : 자체빌드함, 도커이미지는 구동계정과 볼륨연결 시 소유권 이슈가 있어 사용하지 않음
 -tomcat : 도커이미지 사용함
 
+#서버환경
+-private registry서버 1대
+-nfs 서버 1대
+-kubernetes 1세트
+-ha-proxy서버 1대
 
 
 
