@@ -250,18 +250,29 @@ curl 172.x.x.x/hello.html
 # 이미지로 저장 후 Private Registry업로드
 ##########################################
 
-#commit 하기 전에 불필요한 로그 파일 정리 할 것
+#commit 하기 전에 불필요한 로그 파일 정리
+docker exec -it myapache24beta /bin/bash
+/app/apache24/bin/apachectl stop
+cd /logs/web
+rm -rf *.log
+ll
+exit
 
-docker commit CONTAINER_ID reg.hmp.com:443/myapache24:base
+#commit
+docker ps
+docker commit CONTAINER_ID reg.hmp.com:443/myapache24beta:2
+
+docker images
 
 #지금 구동 중이던 컨테이너 삭제
-docker stop myapache24
-docker rm myapache24
+docker stop myapache24beta
+docker rm myapache24beta
 
 
 #로컬에 commit해둔 이미지를 외부포트로 연결 실행
-docker run -it -p 80:80 --name "myapache24" reg.hmp.com:443/myapache24:base
+docker run -it -p 80:80 --name "myapache24beta" reg.hmp.com:443/myapache24beta:2
 /app/apache24/bin/apachectl start
+
 
 #외부PC에서 호출 OK
 http://DOCKERHOST
@@ -273,37 +284,15 @@ exit
 
 
 #이제 업로드
-docker push reg.hmp.com:443/myapache24:base
+docker push reg.hmp.com:443/myapache24beta:2
 
 curl https://reg.hmp.com/v2/_catalog
-
-
-
-
-
-
-
-
 
 
 #아파치 표준 이미지 생성 및 완료
 
 
-##########################################
-# 추가 이미지 생성
-##########################################
-
-#tomcat연동위한 mod_jk, proxy 등 후속 작업(add)
 
 
 
 
-
-
-
-
-
-
-#(참고)systemd 관련 CentOS페이지
-#https://github.com/docker-library/docs/tree/master/centos
-Dockerfile for systemd base image~~~~~~~~~
