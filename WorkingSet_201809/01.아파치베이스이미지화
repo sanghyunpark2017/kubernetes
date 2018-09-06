@@ -1,3 +1,108 @@
 
-#
+#조금 수정 후 private registry 서버에 올려 놓고 이 후 kube가 사용한다
+#conf파일 잘못 수정해서 오류 발생하면 docker 가 running되지 않으니 설정파일은 외부로 빼놓고 작업한다.
+
+#registry clien에서 작업
+
+mkdir /root/httpd
+
+docker pull httpd
+
+#docker run -dit -v /root/httpd/:/usr/local/apache2/conf/ --name "hmpweb" httpd
+docker run -dit --name "hmpweb" httpd
+
+docker ps
+
+docker exec -it hmpweb /bin/bash
+
+#데비안 업데이트 및 툴 설치
+apt update
+apt-get install -y net-tools
+apt-get install -y vim
+
+#bk 스크립트
+vi /sbin/bk
+------------------------------------------------------------------
+#CP.ALL.ENABLE
+
+for i in $*
+do
+        if [ -f $i ]
+        then
+                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
+        else
+                echo "`basename $0` <filenames>"
+        fi
+done
+------------------------------------------------------------------
+
+chmod 755 /sbin/bk
+
+cat << EOF >> /root/.bashrc
+export PS1="\[\e[36;1m\]\u@\[\e[32;1m\]\h:\[\e[31;1m\]\w# \[\e[0m\]"
+alias ll='ls -al'
+EOF
+
+#기본파일 백업
+cd /usr/local/apache2/conf
+cp httpd.conf httpd.conf.base
+
+cd /usr/local/apache2/conf/extra
+cp httpd-autoindex.conf httpd-autoindex.conf.base
+cp httpd-dav.conf httpd-dav.conf.base
+cp httpd-default.conf httpd-default.conf.base
+cp httpd-info.conf httpd-info.conf.base
+cp httpd-languages.conf httpd-languages.conf.base
+cp httpd-manual.conf httpd-manual.conf.base
+cp httpd-mpm.conf httpd-mpm.conf.base
+cp httpd-multilang-errordoc.conf httpd-multilang-errordoc.conf.base
+cp httpd-ssl.conf httpd-ssl.conf.base
+cp httpd-userdir.conf httpd-userdir.conf.base
+cp httpd-vhosts.conf httpd-vhosts.conf.base
+cp proxy-html.conf proxy-html.conf.base
+
+
+vi httpd.conf
+>238행 다음에 추가
+ServerName localhost:80
+
+>263번째 "directory" section 내 모두 주석처리 후 추가
+    Options IncludesNoExec
+    Order allow,deny
+    Allow from all
+    Require all granted
+
+>319행 "ErrorLog" 주석처리 후 추가
+ErrorLog "|/app/apache24/bin/rotatelogs logs/error.%y%m%d.log 86400 540"
+CustomLog "|/app/apache24/bin/rotatelogs logs/access.%y%m%d.log 86400 540" common
+
+
+exit
+
+docker stop hmpweb
+
+docker start hmpweb
+
+docker exec -it hmpweb /bin/bash
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
