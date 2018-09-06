@@ -45,8 +45,8 @@ ll
 ## httpd.conf파일을 볼륨 연결 할 떄 nfs볼륨에 httpd.conf파일을 가져다 놔야 한다.
 ## 볼륨연결하려면 먼저 없이 해본 후에 연결한다
 
+vi /root/demo-httpd.yaml
 ------------------------------------------------------------------------------------------------------------
-cat << EOF > /root/demo-httpd.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -105,9 +105,8 @@ spec:
         hostPath:
           path: /vol/private/demo-httpd/logs/web
           type: Directory
-EOF
-
 ------------------------------------------------------------------------------------------------------------
+
 
 #worker 중 1대에서 디렉토리 생성
 mkdir -p /vol/private/demo-httpd/app/apache24/conf
@@ -117,9 +116,13 @@ mkdir -p /vol/private/demo-httpd/logs/web
 #conf 디렉토리 밑에 httpd.conf 파일생성
 cd /vol/private/demo-httpd/app/apache24/conf
 
+#웹루트에 파일 넣기
+cd /vol/private/demo-httpd/app/webapps
+wget http://10.10.63.63:8089/downloads/testpages/hello.html
+wget http://10.10.63.63:8089/downloads/testpages/index.html
+ll
 
 kubectl delete -f /root/demo-httpd.yaml
-
 
 kubectl apply -f /root/demo-httpd.yaml
 kubectl get deployment 
@@ -132,6 +135,7 @@ kubectl logs -f <POD>
 
 
 cd /vol/private/demo-httpd
+
 
 
 
