@@ -135,8 +135,8 @@ Include conf/extra/httpd-default.conf
 ### Main server configuration
 ServerName localhost:80
 
-ErrorLog "|/app/apache24/bin/rotatelogs /logs/error.%y%m%d.log 86400 540"
-CustomLog "|/app/apache24/bin/rotatelogs /logs/access.%y%m%d.log 86400 540" common
+ErrorLog "|/app/apache24/bin/rotatelogs /logs/web/error.%y%m%d.log 86400 540"
+CustomLog "|/app/apache24/bin/rotatelogs /logs/web/access.%y%m%d.log 86400 540" common
 
 <Directory "/app/webapps">
     Options IncludesNoExec
