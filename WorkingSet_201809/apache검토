@@ -1,5 +1,8 @@
 
 #Setup-k8s_v1.11 환경 위에서 테스트
+#도커 공식 아파치웸서버(httpd)는 OS기반이 데비안임 - 여기에 툴 설치는 중간에 설명
+
+
 
 ################################
 # worker node에 nfs 클라이언트 설치
@@ -39,9 +42,8 @@ ll
 # 아파치웹서버 생성
 ################################
 
-## httpd.conf파일을 export 할 경우 nfs볼륨에 httpd.conf파일을 가져다 놔야 한다.
-## 이 파일이 없으면 pod 구동 에러
-
+## httpd.conf파일을 볼륨 연결 할 떄 nfs볼륨에 httpd.conf파일을 가져다 놔야 한다.
+## 볼륨연결하려면 먼저 없이 해본 후에 연결한다
 
 vi /root/demo-httpd.yaml
 ------------------------------------------------------------------------------------------------------------
@@ -100,7 +102,7 @@ spec:
 ------------------------------------------------------------------------------------------------------------
 
 #worker 중 1대에서 디렉토리 생성
-mkdir -p /vol/private/demo-httpd/usr/local/apache2
+mkdir -p /vol/private/demo-httpd/usr/local/apache2/conf
 mkdir -p /vol/private/demo-httpd/usr/local/apache2/htdocs
 
 
@@ -109,6 +111,34 @@ kubectl delete -f demo-httpd.yaml
 kubectl apply -f demo-httpd.yaml
 
 kubectl get deployment 
+
+kubectl get pod -o wide
+
+
+################################
+# 데비안에 툴 설치
+################################
+# net-tools설치가 안될 때는 레포지토리 업데이트 해 주면 됨
+
+cat << EOF >> /etc/apt/sources.list
+deb  http://deb.debian.org/debian  stretch main
+deb-src  http://deb.debian.org/debian  stretch main
+EOF
+cat /etc/apt/sources.list
+
+apt update
+apt-get install net-tools
+
+
+################################
+# 아파치웹서버 설정 변경
+################################
+-기본 conf파일 백업 후 로그정의
+
+cd /vol/private/demo-httpd/usr/local/apache2/conf
+ll
+bk httpd.conf
+
 
 
 
