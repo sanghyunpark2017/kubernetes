@@ -1,0 +1,296 @@
+
+
+########################################
+# 아파치웹서버 빌드툴 설치
+########################################
+
+#
+#이거슨 아파치 이미지 만든 후에 
+#아파치 빌드용(크기 511MB / 711MB)
+yum install -y expat-devel
+yum install -y gcc*
+
+
+
+
+#####################
+# PCRE 설치
+#####################
+
+1. 다운로드
+mkdir -p /app/src
+cd /app/src
+wget http://sourceforge.net/projects/pcre/files/pcre/8.31/pcre-8.31.tar.gz
+tar zxvf pcre-8.31.tar.gz
+cd /app/src/pcre-8.31
+./configure
+make && make install
+
+#####################
+# APACHE 설치
+#####################
+
+### 소스파일 준비(httpd-2.4.33)
+#apr과 apr-util은 apache src 하위 디렉토리로 옮긴다
+
+1. apache 다운로드 후 압축풀기
+mkdir -p /app/src
+cd /app/src
+wget http://apache.mirror.cdnetworks.com/httpd/httpd-2.4.34.tar.gz 
+tar zxvf httpd-2.4.34.tar.gz
+
+2. apr 다운로드 후 압출풀어서 아파치소스 디렉토리 밑에 옮김
+cd /app/src
+wget http://apache.mirror.cdnetworks.com/apr/apr-1.6.3.tar.gz
+tar zxvf apr-1.6.3.tar.gz
+mv apr-1.6.3 /app/src/httpd-2.4.34/srclib/apr
+ll /app/src/httpd-2.4.34/srclib/
+
+3. apr-util 다운로드 후 압출풀어서 아파치소스 디렉토리 밑에 옮김
+cd /app/src
+wget http://apache.mirror.cdnetworks.com/apr/apr-util-1.6.1.tar.gz 
+tar zxvf apr-util-1.6.1.tar.gz
+mv apr-util-1.6.1 /app/src/httpd-2.4.34/srclib/apr-util
+ll /app/src/httpd-2.4.34/srclib/
+
+4. apache 설치(OpenSSL manual update 후 설치)
+
+cd /app/src/httpd-2.4.34
+
+case. 표준설치 (OpenSSL 수동 업데이트 후 설치)
+./configure --prefix=/app/apache24 --enable-modules=shared --enable-mods-shared=all --enable-pie --enable-ssl --with-ssl=/usr/local/ssl --enable-proxy --enable-proxy-balancer -enable-proxy-ajp -enable-proxy-http --enable-rewrite --enable-unique-id --enable-mpms-shared=all --with-included-apr
+
+case. 통상적인 설치 옵션 및 절차
+./configure --prefix=/app/apache24 --enable-proxy --enable-proxy-balancer --enable-proxy-ajp --enable-proxy-http --enable-rewrite --enable-ssl --enable-unique-id --enable-mods-shared=all --enable-modules=shared --enable-mpms-shared=all --with-included-apr
+
+make && make install
+
+
+#####################
+# libtool 버전 일치
+# OS버전을 apche에 맞춤
+#####################
+
+###먼저, libtool 버전 확인 후 일치되게 만듬
+
+#OS libtool 버전 확인
+whereis libtool
+/usr/bin/libtool --version
+
+#Apache libtool  버전 확인
+/app/apache24/build/libtool --version
+
+#버전 정보 차이가 있으면 다음 과정으로 진행 Apache libtool 백업(apache libtool 위치로 이동 후)
+cd /app/apache24/build/
+mv libtool libtool_org
+chmod 644 libtool_org
+ln -s /usr/bin/libtool /app/apache24/build/libtool
+
+
+##########################################
+# apache : 설정파일 백업
+##########################################
+
+cd /app/apache24/conf
+bk httpd.conf
+
+cd /app/apache24/conf/extra
+bk httpd-mpm.conf
+bk httpd-vhosts.conf
+bk httpd-default.conf
+bk httpd-ssl.conf
+
+##########################################
+# apache : httpd.conf 설정/수정
+##########################################
+
+1) 주석처리 후 vi 종료
+vi /app/apache24/conf/httpd.conf
+-216번째 행 <Directory /> 섹션 주석처리
+-285번째 행 ErrorLog 라인 주석처리
+
+
+2) 파일 뒤에 추가
+---------------------------------------------------------------------------------------------
+cat << EOF >> /app/apache24/conf/httpd.conf
+### Global section
+Include conf/extra/httpd-mpm.conf
+Include conf/extra/httpd-vhosts.conf
+Include conf/extra/httpd-default.conf
+#Include conf/extra/httpd-ssl.conf
+
+### Main server configuration
+ServerName localhost:80
+
+ErrorLog "|/app/apache24/bin/rotatelogs /logs/error.%y%m%d.log 86400 540"
+CustomLog "|/app/apache24/bin/rotatelogs /logs/access.%y%m%d.log 86400 540" common
+
+<Directory "/app/webapps">
+    Options IncludesNoExec
+    Order allow,deny
+    Allow from all
+    Require all granted
+</Directory>
+
+### MOD
+LoadModule ssl_module modules/mod_ssl.so
+LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+EOF
+---------------------------------------------------------------------------------------------
+
+
+grep -v "#" /app/apache24/conf/httpd.conf
+
+
+
+##########################################
+# apache : httpd-vhosts.conf 설정(IP주소 수정)
+##########################################
+# 기존 파일을 아래 내용으로 대체
+#vi /app/apache24/conf/extra/httpd-vhosts.conf
+
+1. 웹루트와 로그디렉토리생성
+mkdir -p /app/webapps
+mkdir -p /logs/web
+
+2. 새로생성
+---------------------------------------------------------------------------------------------
+cat << EOF > /app/apache24/conf/extra/httpd-vhosts.conf
+<VirtualHost *:80>
+    ServerAdmin webmaster@test.co.kr
+    DocumentRoot "/app/webapps"
+    ServerName testweb.test.co.kr
+    ServerAlias testweb.test.co.kr
+    ErrorLog "|/app/apache24/bin/rotatelogs /logs/web/error.%Y-%m-%d.log 86400 540"
+    CustomLog "|/app/apache24/bin/rotatelogs /logs/web/access.%Y-%m-%d.log 86400 540" combined
+    LogLevel warn
+</VirtualHost>
+EOF
+---------------------------------------------------------------------------------------------
+
+3. hosts파일에 추가(클라이언트 측 또는 DNS)
+X.X.X.X  testweb.test.co.kr
+
+grep -v "#" /app/apache24/conf/extra/httpd-vhosts.conf
+
+
+##############################
+# apache 구동스크립트 수정
+##############################
+
+1) 구동스크립트 백업 후 편집
+cd /app/apache24/bin
+bk apachectl
+vi /app/apache24/bin/apachectl
+
+2) 46번 줄 "HTTPD='/app/apache24/bin/httpd'" 밑에 아래 2개 줄 추가
+-------------------------------------------------------------------
+# Source function library.        #add
+. /etc/rc.d/init.d/functions      #add
+-------------------------------------------------------------------
+
+3) 83번 줄 "$HTTPD -k $ARGV" 을 지우고 그 자리에 아래 3개 줄 추가
+-------------------------------------------------------------------
+    echo -n "$ARGV HTTPD : "      #add
+    daemon $HTTPD -k $ARGV        #add
+    echo                          #add
+-------------------------------------------------------------------
+
+
+#####################
+# 테스트페이지 및 시작
+#####################
+
+1) WEB ROOT 디렉토리 생성
+mkdir -p /app/webapps
+cd /app/webapps
+
+2) 테스트페이지
+wget http://10.10.63.63:8089/downloads/testpages/hello.html
+wget http://10.10.63.63:8089/downloads/testpages/index.html
+ll
+
+3) 아파치시작
+/app/apache24/bin/apachectl start
+
+#실행하면
+/etc/rc.d/init.d/functions: No such file or directory 에러 발생
+
+#설치 후 재시도 OK
+yum install initscripts -y
+
+#컨테이너 안에서 테스트페이지 호출
+curl localhost
+curl localhost/hello.html
+
+#컨테이너 밖 도커호스트에서 테스트페이지 호출
+exit
+
+#IP주소를 찾은 후
+docker ps
+docker inspect --format '{{ .NetworkSettings.IPAddress }}' CONTAINER_ID
+
+curl 172.x.x.x
+curl 172.x.x.x/hello.html
+
+##########################################
+# 이미지로 저장 후 Private Registry업로드
+##########################################
+
+#commit 하기 전에 불필요한 로그 파일 정리 할 것
+
+docker commit CONTAINER_ID reg.hmp.com:443/myapache24:base
+
+#지금 구동 중이던 컨테이너 삭제
+docker stop myapache24
+docker rm myapache24
+
+
+#로컬에 commit해둔 이미지를 외부포트로 연결 실행
+docker run -it -p 80:80 --name "myapache24" reg.hmp.com:443/myapache24:base
+/app/apache24/bin/apachectl start
+
+#외부PC에서 호출 OK
+http://DOCKERHOST
+http://DOCKERHOST-IP/hello.html
+
+#종료하면 컨테이너 자동 stoped (대화형이므로)
+exit
+
+
+
+#이제 업로드
+docker push reg.hmp.com:443/myapache24:base
+
+curl https://reg.hmp.com/v2/_catalog
+
+
+
+
+
+
+
+
+
+
+#아파치 표준 이미지 생성 및 완료
+
+
+##########################################
+# 추가 이미지 생성
+##########################################
+
+#tomcat연동위한 mod_jk, proxy 등 후속 작업(add)
+
+
+
+
+
+
+
+
+
+
+#(참고)systemd 관련 CentOS페이지
+#https://github.com/docker-library/docs/tree/master/centos
+Dockerfile for systemd base image~~~~~~~~~
