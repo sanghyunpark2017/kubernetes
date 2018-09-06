@@ -293,6 +293,20 @@ curl https://reg.hmp.com/v2/_catalog
 
 
 
+##########################################
+# 아파치 기본 설정파일 백업 및 업로드
+##########################################
+docker run -it -p 80:80 --name "myapache24beta" reg.hmp.com:443/myapache24beta:2
+tar cvzf apacheconf.tar.gz /app/apache24/conf/*
+
+sftp -P 2189 DCinfra@10.10.38.240
+
+cd /uploads/Users/kubernetes
+put apacheconf.tar.gz
+ls
+exit
+
+
 
 
 
