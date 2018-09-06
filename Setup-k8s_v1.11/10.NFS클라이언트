@@ -1,0 +1,35 @@
+
+#대상 : kuberetes(master, worker), private registry,,
+
+################################
+# nfs 클라이언트
+################################
+mkdir -p /mnt/public
+mkdir -p /mnt/private
+
+yum install -y nfs-utils
+
+
+systemctl enable rpcbind
+systemctl start rpcbind
+
+showmount -e 10.10.64.90
+
+cat <<EOF >> /etc/fstab
+10.10.64.90:/nfs/public /mnt/public nfs soft 0 0
+10.10.64.90:/nfs/private /mnt/private nfs soft 0 0
+EOF
+cat /etc/fstab
+
+mount -a
+
+#umount /mnt/public
+#umount /mnt/private
+
+
+mkdir -p /vol
+ln -s /mnt/public /vol
+ln -s /mnt/private /vol
+
+cd /vol
+ll
