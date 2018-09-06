@@ -1,17 +1,31 @@
 
 
 ########################################
-# 아파치웹서버 빌드툴 설치
+# 아파치 설치용 서버 생성
 ########################################
 
-#
-#이거슨 아파치 이미지 만든 후에 
-#아파치 빌드용(크기 511MB / 711MB)
-yum install -y expat-devel
+#이미 업로드한 커스텀 OS 삭제하고
+docker stop mycentos7beta
+docker rm mycentos7beta
+docker rmi reg.hmp.com:443/mycentos7beta:1
+
+#아파치 설치용 컨테이너 만든다
+
+docker run -dit --name "myapache24beta" reg.hmp.com:443/mycentos7beta:1
+
+docker exec -it myapache24beta /bin/bash
+date
+openssl version
+exit
+
+
+########################################
+# 아파치웹서버 빌드툴 설치
+########################################
+yum install -y expat-devel 
 yum install -y gcc*
 
-
-
+yum install -y wget
 
 #####################
 # PCRE 설치
