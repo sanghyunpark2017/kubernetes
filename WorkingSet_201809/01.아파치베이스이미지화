@@ -1,24 +1,21 @@
 
 #조금 수정 후 private registry 서버에 올려 놓고 이 후 kube가 사용한다
 #conf파일 잘못 수정해서 오류 발생하면 docker 가 running되지 않으니 설정파일은 외부로 빼놓고 작업한다.
+#파일 소유가가 볼륨 호스트서버에 없으면 권한 오류가 발생함 (kuberetes worker 노드도 마찬가지 오류 발생)
+#HOW/?
+
 
 #registry clien에서 작업
 
-mkdir /root/httpd
-
 docker pull httpd
 
-#docker run -dit -v /root/httpd/:/usr/local/apache2/conf/ --name "hmpweb" httpd
 docker run -dit --name "hmpweb" httpd
-
-docker ps
-
 docker exec -it hmpweb /bin/bash
 
 #데비안 업데이트 및 툴 설치
 apt update
-apt-get install -y net-tools
-apt-get install -y vim
+apt-get install -y net-tools vim curl
+
 
 #bk 스크립트
 vi /sbin/bk
@@ -62,7 +59,7 @@ cp httpd-vhosts.conf httpd-vhosts.conf.base
 cp proxy-html.conf proxy-html.conf.base
 
 
-vi httpd.conf
+vi /usr/local/apache2/conf/httpd.conf
 >238행 다음에 추가
 ServerName localhost:80
 
@@ -73,17 +70,17 @@ ServerName localhost:80
     Require all granted
 
 >319행 "ErrorLog" 주석처리 후 추가
-ErrorLog "|/app/apache24/bin/rotatelogs logs/error.%y%m%d.log 86400 540"
-CustomLog "|/app/apache24/bin/rotatelogs logs/access.%y%m%d.log 86400 540" common
+ErrorLog "|/usr/local/apache2/bin/rotatelogs /usr/local/apache2/logs/error.%y%m%d.log 86400 540"
+CustomLog "|/usr/local/apache2/bin/rotatelogs /usr/local/apache2/logs/access.%y%m%d.log 86400 540" common
 
-
+#컨테이너 밖으로 나감
 exit
 
 docker stop hmpweb
-
 docker start hmpweb
-
 docker exec -it hmpweb /bin/bash
+
+
 
 
 
