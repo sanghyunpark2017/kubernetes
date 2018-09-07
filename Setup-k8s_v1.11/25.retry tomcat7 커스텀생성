@@ -8,6 +8,38 @@ docker exec -it tomcat7 /bin/bash
 
 cat /etc/*-release | uniq
 
+apt-get update
+
+apt-get install -y net-tools
+apt-get install -y vim
+
+
+#파일백업 스크립트
+cd /sbin
+vi bk
+------------------------------------------------------------
+#CP.ALL.ENABLE
+for i in $*
+do
+        if [ -f $i ]
+        then
+                cp -pf "$1" "$1".`date +"%y%m%d.%H%M%S"`
+        else
+                echo "`basename $0` <filenames>"
+        fi
+done
+------------------------------------------------------------
+
+chmod 755 bk
+
+#bash profile
+cat << EOF >> /root/.bashrc
+export PS1="\[\e[36;1m\]\u@\[\e[32;1m\]\h:\[\e[31;1m\]\w# \[\e[0m\]"
+alias ll='ls -al'
+EOF
+
+
+
 
 
 
