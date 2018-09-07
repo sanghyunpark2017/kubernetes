@@ -3,15 +3,14 @@
 #wasadm계정으로 구동하는 것은 DOCKERFILE로 부터 make해야 하며 필요시 나중에 실행
 
 
-docker run -dit --name "tomcat7" tomcat:7
-docker exec -it tomcat7 /bin/bash
+docker run -dit -e TZ=Asia/Seoul --name "temptomcat7" tomcat:7
+docker exec -it temptomcat7 /bin/bash
 
+date
 cat /etc/*-release | uniq
 
 apt-get update
-
-apt-get install -y net-tools
-apt-get install -y vim
+apt-get install -y net-tools vim
 
 
 #파일백업 스크립트
@@ -38,12 +37,17 @@ export PS1="\[\e[36;1m\]\u@\[\e[32;1m\]\h:\[\e[31;1m\]\w# \[\e[0m\]"
 alias ll='ls -al'
 EOF
 
+exit
+
+docker exec -it temptomcat7 /bin/bash
+
+
 #####################
 #도커 기본 톰캣 수정
 #####################
 
 #설정백업
-cd /usr/local/tomcat/connf
+cd /usr/local/tomcat/conf
 bk catalina.policy
 bk catalina.properties
 bk context.xml
@@ -51,27 +55,50 @@ bk logging.properties
 bk server.xml
 bk tomcat-users.xml
 bk web.xml
+ll
 
 
 #암호변경
 #참조 https://geekflare.com/tomcat-login-problem/
 
-bk /usr/local/tomcat/conf/tomcat-users.xml
 sed -i 's/<must-be-changed>/CHANGEME/g' /usr/local/tomcat/conf/tomcat-users.xml
 cat /usr/local/tomcat/conf/tomcat-users.xml
 
-#설정백업
-cd /usr/local/tomcat/connf
-bk catalina.policy
-bk catalina.properties
-bk context.xml
-bk logging.properties
-bk server.xml
-bk tomcat-users.xml
-bk web.xml
+
+#####################
+#파일백업 & 업로드
+#####################
+#업로드는 sftp가 지원되지 않는 구성이기에 볼륨 활용함
+
+cd ~
+tar cvzf tomcat7conf.tar.gz /usr/local/tomcat/conf/*
+ll
+
+exit
 
 
-#
+docker ps
+docker commit CONID reg.hmp.com:443/mytomcat7beta:1
+
+~~~~~~~~~~~~여기 까지 ~
+
+
+
+
+
+
+
+
+
+
+sftp -P 2189 DCinfra@10.10.38.240
+
+cd /uploads/Users/kubernetes
+put apacheconf.tar.gz
+ls
+exit
+
+
 
 
 
