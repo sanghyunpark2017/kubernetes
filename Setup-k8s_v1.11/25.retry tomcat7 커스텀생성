@@ -38,42 +38,40 @@ export PS1="\[\e[36;1m\]\u@\[\e[32;1m\]\h:\[\e[31;1m\]\w# \[\e[0m\]"
 alias ll='ls -al'
 EOF
 
-
-
-
-
-
-
-
 #####################
 #도커 기본 톰캣 수정
 #####################
 
-#tomcat6.x/7.x
-Login to Tomcat server
-Go to installation directory and then conf folder
-Open the tomcat-users.xml and add the following above </tomcat-users> syntax
-<role rolename="manager-gui"/>
-<user username="tomcat" password="tomcat" roles="manager-gui"/>
--> 참조 https://geekflare.com/tomcat-login-problem/
+#설정백업
+cd /usr/local/tomcat/connf
+bk catalina.policy
+bk catalina.properties
+bk context.xml
+bk logging.properties
+bk server.xml
+bk tomcat-users.xml
+bk web.xml
 
 
+#암호변경
+#참조 https://geekflare.com/tomcat-login-problem/
 
-#tomcat8.x/9.x
-By default, Tomcat 8 manager is configured to be accessed from the same server where it’s installed. 
-If you access manager, you will get 403 error.
-For a manager to be accessible from any host/IP, you need to do the following.
+bk /usr/local/tomcat/conf/tomcat-users.xml
+sed -i 's/<must-be-changed>/CHANGEME/g' /usr/local/tomcat/conf/tomcat-users.xml
+cat /usr/local/tomcat/conf/tomcat-users.xml
 
-Go to Tomcat installation and then webapps/manager/META-INF
-Open context.xml and comment Valve section as below
--> 참조 https://geekflare.com/tomcat-login-problem/
+#설정백업
+cd /usr/local/tomcat/connf
+bk catalina.policy
+bk catalina.properties
+bk context.xml
+bk logging.properties
+bk server.xml
+bk tomcat-users.xml
+bk web.xml
 
 
-
-
-
-
-
+#
 
 
 
