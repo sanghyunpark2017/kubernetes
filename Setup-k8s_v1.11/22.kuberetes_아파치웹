@@ -1,8 +1,9 @@
 
 
 ###################################
-# (1회성)아파치웹24 기본 COFNIG파일
+# (최초 1회)아파치웹24 기본 COFNIG파일
 ###################################
+#default 설정파일을 nfs서버 common 영역에 갖다 놓는다
 
 mkdir /vol/public/common/apache24conf
 cd /vol/public/common/apache24conf
