@@ -3,45 +3,13 @@
 #wasadm계정으로 구동하는 것은 DOCKERFILE로 부터 make해야 하며 필요시 나중에 실행
 
 
-docker run -dit --name "mytomcat" reg.hmp.com:443/mycentos7beta:1
-
-docker exec -it mytomcat /bin/bash
-
------------------------------------------------------------------------------------
-#docker tomcat 다운로드 받아서 계정/그룹 조사
-docker search tomcat
-
 docker run -dit --name "tomcat7" tomcat:7
-docker run -dit --name "tomcat8" tomcat:8
+docker exec -it tomcat7 /bin/bash
+
+cat /etc/*-release | uniq
 
 
 
-cat /etc/passwd 
-www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
-
-cat /etc/group
-www-data:x:33:
------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-#cat /etc/passwd
-www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
-opmon:x:501:501::/home/opmon:/bin/bash
-wasadm:x:502:502::/home/wasadm:/bin/bash
-oracle:x:503:503::/home/oracle:/bin/bash
-
-#cat /etc/group
-www-data:x:33:
-opmon:x:501:
-wasadm:x:502:oracle
-dba:x:503:
-
-useradd -g www-data www-data
 
 
 
