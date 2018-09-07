@@ -1,0 +1,91 @@
+
+
+docker run -dit --name "mytomcat" reg.hmp.com:443/mycentos7beta:1
+
+docker exec -it mytomcat /bin/bash
+
+-----------------------------------------------------------------------------------
+#docker tomcat 다운로드 받아서 계정/그룹 조사
+docker search tomcat
+
+
+docker run -dit --name "tomcat7" tomcat:7
+docker run -dit --name "tomcat8" tomcat:8
+
+
+
+cat /etc/passwd 
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+
+cat /etc/group
+www-data:x:33:
+-----------------------------------------------------------------------------------
+
+
+
+
+
+
+
+#cat /etc/passwd
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+opmon:x:501:501::/home/opmon:/bin/bash
+wasadm:x:502:502::/home/wasadm:/bin/bash
+oracle:x:503:503::/home/oracle:/bin/bash
+
+#cat /etc/group
+www-data:x:33:
+opmon:x:501:
+wasadm:x:502:oracle
+dba:x:503:
+
+useradd -g www-data www-data
+
+
+
+#####################
+#도커 기본 톰캣 수정
+#####################
+
+#tomcat6.x/7.x
+Login to Tomcat server
+Go to installation directory and then conf folder
+Open the tomcat-users.xml and add the following above </tomcat-users> syntax
+<role rolename="manager-gui"/>
+<user username="tomcat" password="tomcat" roles="manager-gui"/>
+-> 참조 https://geekflare.com/tomcat-login-problem/
+
+
+
+#tomcat8.x/9.x
+By default, Tomcat 8 manager is configured to be accessed from the same server where it’s installed. 
+If you access manager, you will get 403 error.
+For a manager to be accessible from any host/IP, you need to do the following.
+
+Go to Tomcat installation and then webapps/manager/META-INF
+Open context.xml and comment Valve section as below
+-> 참조 https://geekflare.com/tomcat-login-problem/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
