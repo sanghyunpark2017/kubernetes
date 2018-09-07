@@ -122,6 +122,8 @@ vi /app/apache24/conf/httpd.conf
 -216번째 행 <Directory /> 섹션 주석처리
 -285번째 행 ErrorLog 라인 주석처리
 
+!!!!!!!!!! 로그파일명에 ${HOSTNAME}_ 나중에 추가함 테스트할 것!!
+
 
 2) 파일 뒤에 추가
 ---------------------------------------------------------------------------------------------
@@ -135,8 +137,8 @@ Include conf/extra/httpd-default.conf
 ### Main server configuration
 ServerName localhost:80
 
-ErrorLog "|/app/apache24/bin/rotatelogs /logs/web/error.%y%m%d.log 86400 540"
-CustomLog "|/app/apache24/bin/rotatelogs /logs/web/access.%y%m%d.log 86400 540" common
+ErrorLog "|/app/apache24/bin/rotatelogs /logs/web//${HOSTNAME}_error.%y%m%d.log 86400 540"
+CustomLog "|/app/apache24/bin/rotatelogs /logs/web//${HOSTNAME}_access.%y%m%d.log 86400 540" common
 
 <Directory "/app/webapps">
     Options IncludesNoExec
