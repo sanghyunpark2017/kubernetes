@@ -62,6 +62,163 @@ curl localhost:32001
 http://10.10.64.90:32001
 
 
+#이미지업로드
+
+docker stop mynginx
+docker commit CON-ID reg.hmp.com:443/mynginx-kibana-login-201809131551
+docker push reg.hmp.com:443/mynginx-kibana-login-201809131551
+curl https://reg.hmp.com/v2/_catalog
+
+#다시 테스트(SKIP)
+docker run -dit -p 32001:80 --name "mynginx-kibana-login" reg.hmp.com:443/mynginx-kibana-login-201809131551
+http://10.10.64.90:32001
+
+
+############################
+# Kubernetes/nginx-kibana
+############################
+
+vi /root/demo-nginx-kibana-login-deployment.yaml
+----------------------------------------------------------------------------------------
+#cat << EOF > /root/demo-nginx-kibana-login-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-nginx-kibana-login-deployment
+  namespace: default
+  labels:
+    app: demo-nginx-kibana-login
+    tier: frontend
+    role: making
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-nginx-kibana-login
+      tier: frontend
+      role: making
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: demo-nginx-kibana-login
+        tier: frontend
+        role: making
+        deployment: v1
+    spec:
+      containers:
+      - name: demo-nginx-kibana-login-pod
+        image: reg.hmp.com/mynginx-kibana-login-201809131551:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "200Mi"
+          requests:
+            memory: "100Mi"
+        command: ["nginx", "-g", "daemon off;"]
+#        volumeMounts:
+#        - mountPath: /app/logstash-6.4.0/config/logstash.conf
+#          name: name1
+#      volumes:
+#      - name: name1
+#        hostPath:
+#          path: /vol/private/logstash-security-2008-deployment/app/logstash-6.4.0/config/logstash.conf
+#          type: File
+----------------------------------------------------------------------------------------
+
+
+vi /root/demo-nginx-kibana-login-service.yaml
+----------------------------------------------------------------------------------------
+#cat << EOF > /root/demo-nginx-kibana-login-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-nginx-kibana-login-service
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: demo-nginx-kibana-login
+    tier: frontend
+    role: making
+    deployment: v1
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    nodePort: 32003
+----------------------------------------------------------------------------------------
+
+
+kubectl apply -f /root/demo-nginx-kibana-login-deployment.yaml
+kubectl apply -f /root/demo-nginx-kibana-login-service.yaml
+
+
+
+
+############################
+# HA-Proxy 설정
+############################
+bk /etc/haproxy/haproxy.cfg
+
+vi  /etc/haproxy/haproxy.cfg
+-------------------------------------------------------------------------------------------------------------------------
+#***********************
+# nginx-kibana-login
+#***********************
+
+frontend nginx-kibana-login
+  bind *:80
+  mode tcp
+  option tcplog
+  default_backend nginx-kibana-login
+
+backend nginx-kibana-login
+  mode tcp
+  option tcplog
+  option tcp-check
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+  server t1vkubework1 10.10.64.64:32003 check fall 3 rise 2
+  server t1vkubework2 10.10.64.65:32003 check fall 3 rise 2
+  server t1vkubework3 10.10.64.66:32003 check fall 3 rise 2
+-------------------------------------------------------------------------------------------------------------------------
+
+firewall-cmd --get-default-zone
+firewall-cmd --permanent --zone=public --add-port=80/tcp
+firewall-cmd --reload
+firewall-cmd --list-ports
+
+systemctl stop haproxy
+systemctl start haproxy
+systemctl status haproxy
+
+
+############################
+# 접속테스트
+############################
+
+http://10.10.64.99 (hmplogadm / logmon/4u)
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #이제 이미지 tag 후 업로드 하고
 kube에서는 .htpasswd 파일과 nginx.conf 파일을 외부로 뺀다.
@@ -71,6 +228,8 @@ kube에서는 .htpasswd 파일과 nginx.conf 파일을 외부로 뺀다.
 +nginx에 ssl
 +otp 인증
 ++초화면 디자인 가능한지
+-> nginx에서 로컬 이미지와 인증, OTP인증하게 제작하고 -> JAVA로 하긴 
+-> 
 
 
 
