@@ -10,7 +10,7 @@
 -docker로 하며 official nginx를 다운로드 받아서 로컬이미지화 함
 -official nginx가 우부트 기반임
 
-docker pull nginx:lates
+docker pull nginx
 
 docker run -dit -p 32001:80 --name "mynginx" nginx
  
