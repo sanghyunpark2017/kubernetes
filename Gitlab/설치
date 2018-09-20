@@ -1,0 +1,43 @@
+
+
+#깃랩공식사이트(https://about.gitlab.com/)에 ce버전 설치 가이드를 따라함
+
+
+#호스트이름 변경
+hostnamectl set-hostname gitlab.homeplusnet.co.kr
+
+
+1.Install and configure the necessary dependencies
+sudo yum install -y curl policycoreutils-python openssh-server
+sudo systemctl enable sshd
+sudo systemctl start sshd
+sudo firewall-cmd --permanent --add-service=http
+sudo systemctl reload firewalld
+
+sudo yum install postfix
+sudo systemctl enable postfix
+sudo systemctl start postfix
+
+
+2.Add the GitLab package repository and install the package
+curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+
+sudo EXTERNAL_URL="http://gitlab.homeplusnet.co.kr" yum install -y gitlab-ce
+
+...
+Installing : gitlab-ee-10.2.1-ee.0.el7.x86_64  1/1
+  * Moving existing certificates found in /opt/gitlab/embedded/ssl/certs
+  * Symlinking existing certificates found in /etc/gitlab/trusted-certs
+gitlab Reconfigured!
+(중략)
+
+#Thank you for installing GitLab!
+#GitLab should be available at http://gitlab.homeplusnet.co.kr
+
+sudo gitlab-ctl reconfigure
+
+gitlab-ctl restart
+
+
+
+
