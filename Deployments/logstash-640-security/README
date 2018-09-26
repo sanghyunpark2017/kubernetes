@@ -1,1 +1,72 @@
-#
+
+
+#전체 내용 CHANGEME 이름 변경
+#ex) logstash-security-2008
+
+
+------------------------------------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: CHANGEME-deployment
+  namespace: default
+  labels:
+    app: CHANGEME
+    tier: frontend
+    role: app
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: CHANGEME
+      tier: frontend
+      role: app
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: CHANGEME
+        tier: frontend
+        role: app
+        deployment: v1
+    spec:
+      containers:
+      - name: CHANGEME-deployment-pod
+        image: reg.hmp.com/logstash-640-security-20180912-0756:latest
+        ports:
+        - containerPort: 5555
+        resources:
+          limits:
+            memory: "2Gi"
+          requests:
+            memory: "1Gi"
+        command: ["/app/logstash-6.4.0/bin/logstash", "-f", "/app/logstash-6.4.0/config/logstash.conf"]
+        volumeMounts:
+        - mountPath: /app/logstash-6.4.0/config/logstash.conf
+          name: name1
+      volumes:
+      - name: name1
+        hostPath:
+          path: /vol/private/CHANGEME-deployment/app/logstash-6.4.0/config/logstash.conf
+          type: File
+------------------------------------------------------------------------------------------------------------
+
+
+mkdir -p /vol/private/CHANGEME/app/logstash-6.4.0/config
+
+cd /vol/private/CHANGEME/app/logstash-6.4.0/config
+wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_linux
+wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_win2003
+wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_win2008
+
+mv logstash.conf_for_*****  logstash.conf
+
+
+
+
+
+
+
+
+
