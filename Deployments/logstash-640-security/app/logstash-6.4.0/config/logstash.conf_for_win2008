@@ -1,0 +1,16 @@
+input {
+  beats {
+    port => "5555"
+  }
+}
+
+filter {
+}
+
+output {
+  elasticsearch {
+    hosts => ["10.10.64.91:9200", "10.10.64.92:9200", "10.10.64.93:9200"]
+    index => "security-2008-%{+yyyy-MM-dd}"
+  }
+#  stdout { codec => rubydebug }
+}
