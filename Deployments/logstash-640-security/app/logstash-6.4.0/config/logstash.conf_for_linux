@@ -1,0 +1,37 @@
+input {
+  beats {
+    port => "5555"
+  }
+}
+
+filter {
+  if [type] == "mysecurelog" {
+    mutate {
+      remove_field => [ "beat", "offset", "source" ]
+    }
+  }
+  else if [type] == "mysulog" {
+    mutate {
+      remove_field => [ "beat", "offset", "source" ]
+    }
+  }
+}
+
+output {
+  if [type] == "mysecurelog"
+  {
+    elasticsearch {
+      hosts => ["10.10.64.91:9200", "10.10.64.92:9200", "10.10.64.93:9200"]
+      index => "security-linux-secure-%{+yyyy-MM-dd}"
+    }
+  }
+  else if [type] == "mysulog"
+  {
+    elasticsearch {
+      hosts => ["10.10.64.91:9200", "10.10.64.92:9200", "10.10.64.93:9200"]
+      index => "security-linux-sulog-%{+yyyy-MM-dd}"
+    }
+  }
+}
+
+
