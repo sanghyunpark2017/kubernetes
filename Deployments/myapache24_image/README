@@ -1,1 +1,64 @@
-READ
+
+
+
+---------------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-httpd-deployment
+  namespace: default
+  labels:
+    app: demo-httpd
+    tier: frontend
+    role: making
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-httpd
+      tier: frontend
+      role: making
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: demo-httpd
+        tier: frontend
+        role: making
+        deployment: v1
+    spec:
+      containers:
+      - name: demo-httpd-deployment-pod
+        image: reg.hmp.com/myapache24beta:2
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "200Mi"
+          requests:
+            memory: "100Mi"
+        command: ["/app/apache24/bin/apachectl", "-D", "FOREGROUND"]
+#        args: [-]
+        volumeMounts:
+        - mountPath: /app/apache24/conf/httpd.conf
+          name: file1
+        - mountPath: /app/webapps
+          name: directory1
+        - mountPath: /logs/web
+          name: directory2
+      volumes:
+      - name: file1
+        hostPath:
+          path: /vol/private/demo-httpd/app/apache24/conf/httpd.conf
+          type: File
+      - name: directory1
+        hostPath:
+          path: /vol/private/demo-httpd/app/webapps
+          type: Directory
+      - name: directory2
+        hostPath:
+          path: /vol/private/demo-httpd/logs/web
+          type: Directory
+---------------------------------------------------------------------------------------
+
