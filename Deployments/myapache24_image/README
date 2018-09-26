@@ -1,35 +1,36 @@
 
+#전체 내용 CHANGEME  이름 변경
 
 
 ---------------------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-httpd-deployment
+  name: CHANGEME-deployment
   namespace: default
   labels:
-    app: demo-httpd
+    app: CHANGEME
     tier: frontend
-    role: making
+    role: httpd
     deployment: v1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: demo-httpd
+      app: CHANGEME
       tier: frontend
-      role: making
+      role: httpd
       deployment: v1
   template:
     metadata:
       labels:
-        app: demo-httpd
+        app: CHANGEME
         tier: frontend
-        role: making
+        role: httpd
         deployment: v1
     spec:
       containers:
-      - name: demo-httpd-deployment-pod
+      - name: CHANGEME-deployment-pod
         image: reg.hmp.com/myapache24beta:2
         ports:
         - containerPort: 80
@@ -50,15 +51,15 @@ spec:
       volumes:
       - name: file1
         hostPath:
-          path: /vol/private/demo-httpd/app/apache24/conf/httpd.conf
+          path: /vol/private/CHANGEME/app/apache24/conf/httpd.conf
           type: File
       - name: directory1
         hostPath:
-          path: /vol/private/demo-httpd/app/webapps
+          path: /vol/private/CHANGEME/app/webapps
           type: Directory
       - name: directory2
         hostPath:
-          path: /vol/private/demo-httpd/logs/web
+          path: /vol/private/CHANGEME/logs/web
           type: Directory
 ---------------------------------------------------------------------------------------
 
