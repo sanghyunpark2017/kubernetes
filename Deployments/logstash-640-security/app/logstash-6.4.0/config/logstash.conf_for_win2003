@@ -1,0 +1,20 @@
+input {
+  beats {
+    port => "5555"
+  }
+}
+
+filter {
+  if [event_id] != 528 and [event_id] != 538 {
+    drop {}
+  }
+
+}
+
+output {
+  elasticsearch {
+    hosts => ["10.10.64.91:9200", "10.10.64.92:9200", "10.10.64.93:9200"]
+    index => "security-2003-%{+yyyy-MM-dd}"
+  }
+#  stdout { codec => rubydebug }
+}
