@@ -1,0 +1,12 @@
+
+#리눅스
+-레드햇계열 6.X  이상만 가능
+-filebeat에서 secure로그와 su로그 2개 전송하는 것을 type 구분하여 처리함
+
+#윈도우2008
+-winlogbeat에서 로그온/로그오프만 필터링해서 전송하기에 logstash는 bypass 만 수행
+
+#윈도우2003
+-OS에서 로그인type 구분을 지원(api) 하지 않아서 로그온/로그오픈 필터링을 logstash에서 수행
+
+
