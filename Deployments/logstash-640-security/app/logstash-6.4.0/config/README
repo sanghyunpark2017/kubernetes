@@ -11,3 +11,9 @@
 
 
 ##각 OS유형별로 logstash를 운용하는 것으로 하여 각자의 config파일을 rename "logstash.conf"하여 사용함
+
+각 OS별 설정은 https://github.com/sanghyunpark2017/ElasticSearch/blob/master/SecurityLogs-Deployment  참조
+
+
+
+
