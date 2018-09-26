@@ -120,6 +120,13 @@ ll /vol/private/CHANGEME/app/webapps
 ll /vol/private/CHANGEME/app/apache24/conf
 ll /vol/private/CHANGEME/app/apache24/conf/extra
 
-mv /vol/private/CHANGEME   /vol/private/CHANGEME-TOBE
+cd /vol/private/
+
+#
+mv CHANGEME  CHANGEME-TOBE
+
+
+
+
 
 
