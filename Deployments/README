@@ -4,3 +4,25 @@
 
 #logstash-640-security : 2018년 9월 제작
 
+#Service/DNS rule
+
+kubedev1  : TCP 30010 ~ 30019
+kubedev2  : TCP 30020 ~ 30029
+kubedev3  : TCP 30030 ~ 30039
+kubedev4  : TCP 30040 ~ 30049
+kubedev5  : TCP 30050 ~ 30059
+...
+kubedev12 : TCP 30120 ~ 30129
+..
+kubedev99 : TCP 30990 ~ 30999
+
+예)
+
+kubedev1은 하나의 어플리케이션 셋트를 의미하는 것으로 간주하여 여기에  web, was, redis, mysql 각각 서비스를 가지고 있다고 치면
+아래처럼 10개 IP주소 범위 중에 다음대로 지정해서 사용토록 한다.
+
+kubedev1web.demo.com -> tcp 30010
+kubedev1was.demo.com -> tcp 30011
+kubedev1mysql.demo.com -> tcp 30012
+kuebedev1redis.demo.com -> tcp 30013
+
