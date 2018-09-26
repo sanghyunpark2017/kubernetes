@@ -10,3 +10,4 @@
 -OS에서 로그인type 구분을 지원(api) 하지 않아서 로그온/로그오픈 필터링을 logstash에서 수행
 
 
+##각 OS유형별로 logstash를 운용하는 것으로 하여 각자의 config파일을 rename "logstash.conf"하여 사용함
