@@ -65,7 +65,7 @@ spec:
 
 
 
-mkdir -p /vol/private/CHANGEME/logs
+mkdir -p /vol/private/CHANGEME/logs/web
 mkdir -p /vol/private/CHANGEME/app/webapps
 mkdir -p /vol/private/CHANGEME/app/apache24/conf
 mkdir -p /vol/private/CHANGEME/app/apache24/conf/extra
@@ -116,7 +116,7 @@ wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/myap
 
 
 
-ll /vol/private/CHANGEME/logs
+ll /vol/private/CHANGEME/logs/web
 ll /vol/private/CHANGEME/app/webapps
 ll /vol/private/CHANGEME/app/apache24/conf
 ll /vol/private/CHANGEME/app/apache24/conf/extra
