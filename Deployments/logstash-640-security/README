@@ -1,9 +1,6 @@
+#CHAGNEME 영문소문자로 변경
 
-
-#전체 내용 CHANGEME 이름 변경
-#ex) logstash-security-2008
-
-
+vi /root/CHANGEME-deployment.yaml
 ------------------------------------------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -48,22 +45,15 @@ spec:
       volumes:
       - name: name1
         hostPath:
-          path: /vol/private/CHANGEME-deployment/app/logstash-6.4.0/config/logstash.conf
+          path: /vol/private/CHANGEME/app/logstash-6.4.0/config/logstash.conf
           type: File
 ------------------------------------------------------------------------------------------------------------
 
-
-mkdir -p /vol/private/CHANGEME/app/logstash-6.4.0/config
-
-cd /vol/private/CHANGEME/app/logstash-6.4.0/config
-wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_linux
-wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_win2003
-wget https://github.com/sanghyunpark2017/kubernetes/blob/master/Deployments/logstash-640-security/app/logstash-6.4.0/config/logstash.conf_for_win2008
-
-mv logstash.conf_for_*****  logstash.conf
-
-
-
+mkdir -p /vol/private/CHANGEME
+cd  /vol/private/CHANGEME
+wget http://10.10.63.63:8089/mylogstash-6.4.0.zip
+unzip mylogstash-6.4.0.zip
+rm -f mylogstash-6.4.0.zip
 
 
 
