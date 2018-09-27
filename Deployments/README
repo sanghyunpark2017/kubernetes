@@ -27,13 +27,54 @@ DNS에는 기본적으로 등록 kubedev1.***.com 해두고, 기본 FQDN으로 �
 그 서비스의 특징을 표현하는 것은 alias로 추가 등록 "예)kubedevweb1.***.com" 하고 ha-proxy에도 반영
 
 
-
-
 kubedev1http.demo.com -> tcp 30010, expose 80
 kubedev1http2.demo.com -> tcp 30011, expose 443
 kubedev1was.demo.com -> tcp 30012
 kubedev1mysql.demo.com -> tcp 30013 
 kuebedev1redis.demo.com -> tcp 30014
+
+################
+#presetup
+################
+#공통 : filebeat(access, catalina, mysql)
+
+kubedev1 : http, was
+kubedev2 : https, was
+kubedev3 : https, was, rkm
+
+kubedev4 : https, was, mysql(single)
+kubedev5 : https, was, mysql(active/standby)
+kubedev6 : https, was, mysql(active/acitve)
+
+kubedev7 : logstash(linux), http/https
+kubedev8 : logstash(linux), tomcat/app
+
+
+################
+#extended
+################
+
+kubedev11 : HBO Tran서버
+kubedev12 : HBO 통신서버
+...
+..
+.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
