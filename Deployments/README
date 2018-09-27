@@ -21,6 +21,11 @@ kubedev99 : TCP 30990 ~ 30999
 kubedev1은 하나의 어플리케이션 셋트를 의미하는 것으로 간주하여 여기에  web, was, redis, mysql 각각 서비스를 가지고 있다고 치면
 아래처럼 10개 IP주소 범위 중에 다음대로 지정해서 사용토록 한다.
 
+kubedev1.***.com 을 치면 그 어플리케이션 셋트의 대표 서비스를 바라보게 함
+백앤드(redis, was, mysql) 등은 app간에 사용하는 것이므로 public DNS에 노출 시킬 필요 없음
+
+
+
 kubedev1http.demo.com -> tcp 30010, expose 80
 kubedev1http2.demo.com -> tcp 30011, expose 443
 kubedev1was.demo.com -> tcp 30012
