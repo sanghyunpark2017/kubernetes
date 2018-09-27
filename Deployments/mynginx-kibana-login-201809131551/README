@@ -1,4 +1,5 @@
-#
+#CHANGEME 영문소문자로 변경
+
 
 vi /root/CHANGEME-deployment.yaml
 ------------------------------------------------------------------------------------------------------------------------
@@ -55,7 +56,8 @@ mkdir -p /vol/private/CHANGEME
 cd  /vol/private/CHANGEME
 wget http://10.10.63.63:8089/mynginx-kibana-login-201809131551.zip
 unzip mynginx-kibana-login-201809131551.zip
-rm mynginx-kibana-login-201809131551.zip
+rm -f mynginx-kibana-login-201809131551.zip
+
 
 
 
