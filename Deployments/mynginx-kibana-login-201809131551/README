@@ -1,1 +1,61 @@
 #
+
+------------------------------------------------------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: CHANGEME-deployment
+  namespace: default
+  labels:
+    app: CHANGEME
+    tier: frontend
+    role: proxy
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: CHANGEME
+      tier: frontend
+      role: proxy
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: CHANGEME
+        tier: frontend
+        role: proxy
+        deployment: v1
+    spec:
+      containers:
+      - name: CHANGEME-pod
+        image: reg.hmp.com/mynginx-kibana-login-201809131551:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "200Mi"
+          requests:
+            memory: "100Mi"
+        command: ["nginx", "-g", "daemon off;"]
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/default.conf
+          name: name1
+      volumes:
+      - name: name1
+        hostPath:
+          path: /vol/private/CHANGEME/etc/nginx/conf.d/default.conf
+          type: File
+------------------------------------------------------------------------------------------------------------------------
+
+
+
+mkdir -p /vol/private/CHANGEME
+cd  /vol/private/CHANGEME
+wget http://10.10.63.63:8089/mynginx-kibana-login-201809131551.zip
+unzip mynginx-kibana-login-201809131551.zip
+rm mynginx-kibana-login-201809131551.zip
+
+
+
+
