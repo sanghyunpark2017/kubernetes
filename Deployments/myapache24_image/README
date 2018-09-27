@@ -1,7 +1,7 @@
 
-#전체 내용 CHANGEME  이름 변경
+#CHANGEME 영문소문자로 변경
 
-
+vi /root/CHANGEME-deployment.yaml
 ---------------------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -38,7 +38,7 @@ spec:
           limits:
             memory: "200Mi"
           requests:
-            memory: "100Mi"
+            memory: "100Mi
         command: ["/app/apache24/bin/apachectl", "-D", "FOREGROUND"]
 #        args: [-]
         volumeMounts:
@@ -69,7 +69,9 @@ mkdir -p /vol/private/CHANGEME
 cd /vol/private/CHANGEME
 wget http://10.10.63.63:8089/myapache24beta.zip
 unzip myapache24beta.zip
-rm myapache24beta.zip
+rm -f myapache24beta.zip
+
+
 
 
 
