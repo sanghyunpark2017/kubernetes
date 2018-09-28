@@ -1,6 +1,15 @@
-#
+######################
+# 오류노트
+######################
 
+1. Neither ther JAVA_HOME nor the JRE_HOME environment variable is defined
+ -> /root/.bashrc에서 환경변수 등록했기 때문
+ -> /root/.bash_profile에 등록해서 OK
+ 
+ 
 
+vi /root/default-mytomcat9openjava8-deployment.yaml
+----------------------------------------------------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,19 +40,15 @@ spec:
       - name: default-mytomcat9openjava8-deployment-pod
         image: reg.hmp.com/mytomcat9openjava8:latest
         ports:
-        - containerPort: 5555
+        - name: port8009
+          containerPort: 8009
+        - name: port8080
+          containerPort: 8080
         resources:
           limits:
             memory: "2Gi"
           requests:
             memory: "1Gi"
-        command: ["/app/logstash-6.4.0/bin/logstash", "-f", "/app/logstash-6.4.0/config/logstash.conf"]
-        volumeMounts:
-        - mountPath: /app/logstash-6.4.0/config/logstash.conf
-          name: name1
-      volumes:
-      - name: name1
-        hostPath:
-          path: /vol/private/logstash-security-2008-deployment/app/logstash-6.4.0/config/logstash.conf
-          type: File
+        command: ["sh", "-c", "/app/tomcat9/bin/startup.sh"]
+----------------------------------------------------------------------------------------------------------------------
 
