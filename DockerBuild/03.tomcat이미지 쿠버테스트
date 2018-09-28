@@ -3,6 +3,7 @@
 ######################
 
 1. Neither ther JAVA_HOME nor the JRE_HOME environment variable is defined
+   -> /root/.bashrc에 정의해서 docker에서는 잘 돌아감 하지만 kube는 이 프로필을 실행하지 않기 때문에 발생함
    -> kube yaml에 EVN 정의하여 해결
 2. yaml에 env는 셀프 참조가 안됨
    -> 절대경로 전체를 넣어줌
