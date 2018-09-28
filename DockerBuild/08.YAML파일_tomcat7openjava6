@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: default-tomcat7openjava68-deployment
+  name: default-tomcat7openjava6-deployment
   namespace: default
   labels:
     app: default-tomcat76openjava6
