@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: default-tomcat8openjava8-deployment
+  name: default-tomcat9openjava8-deployment
   namespace: default
   labels:
     app: default-tomcat8openjava8
@@ -12,20 +12,20 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: default-tomcat8openjava8
+      app: default-tomcat9openjava8
       tier: backend
       role: was
       deployment: v1
   template:
     metadata:
       labels:
-        app: default-tomcat8openjava8
+        app: default-tomcat9openjava8
         tier: backend
         role: was
         deployment: v1
     spec:
       containers:
-      - name: default-tomcat8openjava8-deployment-pod
+      - name: default-tomcat9openjava8-deployment-pod
         image: reg.hmp.com/tomcat:latest
         securityContext:
           runAsUser: 502
