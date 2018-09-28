@@ -4,7 +4,7 @@ metadata:
   name: default-tomcat7openjava6-deployment
   namespace: default
   labels:
-    app: default-tomcat76openjava6
+    app: default-tomcat7openjava6
     tier: backend
     role: was
     deployment: v1
