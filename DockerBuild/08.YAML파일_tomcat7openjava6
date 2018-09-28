@@ -19,13 +19,13 @@ spec:
   template:
     metadata:
       labels:
-        app: default-tomcat78openjava6
+        app: default-tomcat7openjava6
         tier: backend
         role: was
         deployment: v1
     spec:
       containers:
-      - name: default-tomcat78openjava6-deployment-pod
+      - name: default-tomcat7openjava6-deployment-pod
         image: reg.hmp.com/tomcat:latest
         securityContext:
           runAsUser: 502
