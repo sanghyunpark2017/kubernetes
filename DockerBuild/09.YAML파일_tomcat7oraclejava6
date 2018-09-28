@@ -1,1 +1,54 @@
-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: default-tomcat7oraclejava6-deployment
+  namespace: default
+  labels:
+    app: default-tomcat7oraclejava6
+    tier: backend
+    role: was
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: default-tomcat7oraclejava6
+      tier: backend
+      role: was
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: default-tomcat7oraclejava6
+        tier: backend
+        role: was
+        deployment: v1
+    spec:
+      containers:
+      - name: default-tomcat7oraclejava6-deployment-pod
+        image: reg.hmp.com/tomcat:latest
+        securityContext:
+          runAsUser: 502
+          allowPrivilegeEscalation: false
+        env:
+        - name: JAVA_HOME
+          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64"
+        - name: JRE_HOME
+          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/jre"
+        - name: CATALINA_HOME
+          value: "/app/tomcat7"
+        - name: PATH
+          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/bin:/app/tomcat7/bin"
+        - name: CLASSPATH
+          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/lib/tools.jar:/app/tomcat7/lib/servlet-api.jar"
+        ports:
+        - name: port8009
+          containerPort: 8009
+        - name: port8080
+          containerPort: 8080
+        resources:
+          limits:
+            memory: "2Gi"
+          requests:
+            memory: "1Gi"
+        command: ["/app/tomcat9/bin/catalina.sh", "run"]
