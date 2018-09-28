@@ -32,15 +32,15 @@ spec:
           allowPrivilegeEscalation: false
         env:
         - name: JAVA_HOME
-          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64"
+          value: "/app/java/jdk1.6.0_45"
         - name: JRE_HOME
-          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/jre"
+          value: "/app/java/jdk1.6.0_45/jre"
         - name: CATALINA_HOME
           value: "/app/tomcat7"
         - name: PATH
-          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/bin:/app/tomcat7/bin"
+          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/app/java/jdk1.6.0_45/bin:/app/tomcat7/bin"
         - name: CLASSPATH
-          value: "/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.41.x86_64/lib/tools.jar:/app/tomcat7/lib/servlet-api.jar"
+          value: "/app/java/jdk1.6.0_45/lib/tools.jar:/app/tomcat7/lib/servlet-api.jar"
         ports:
         - name: port8009
           containerPort: 8009
