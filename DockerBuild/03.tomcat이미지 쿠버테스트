@@ -1,1 +1,49 @@
 #
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: default-mytomcat9openjava8-deployment
+  namespace: default
+  labels:
+    app: default-mytomcat9openjava8
+    tier: backend
+    role: was
+    deployment: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: default-mytomcat9openjava8
+      tier: backend
+      role: was
+      deployment: v1
+  template:
+    metadata:
+      labels:
+        app: default-mytomcat9openjava8
+        tier: backend
+        role: was
+        deployment: v1
+    spec:
+      containers:
+      - name: default-mytomcat9openjava8-deployment-pod
+        image: reg.hmp.com/mytomcat9openjava8:latest
+        ports:
+        - containerPort: 5555
+        resources:
+          limits:
+            memory: "2Gi"
+          requests:
+            memory: "1Gi"
+        command: ["/app/logstash-6.4.0/bin/logstash", "-f", "/app/logstash-6.4.0/config/logstash.conf"]
+        volumeMounts:
+        - mountPath: /app/logstash-6.4.0/config/logstash.conf
+          name: name1
+      volumes:
+      - name: name1
+        hostPath:
+          path: /vol/private/logstash-security-2008-deployment/app/logstash-6.4.0/config/logstash.conf
+          type: File
+
