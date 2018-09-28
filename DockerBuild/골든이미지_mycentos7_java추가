@@ -16,7 +16,6 @@ docker exec -it mycentos7 /bin/bash
 ############################
 ##openjdk6/7/8 설치
 ############################
-
 #openjdk 설치가능확인
 yum list java*jdk-devel
 
@@ -55,11 +54,9 @@ chmod 755 jdk-6u45-linux-x64.bin
 rm -f jdk-6u45-linux-x64.bin
 
 
-
-
 ############################
 ##자바환경변수등록(root)
-##사용할 java 버전 1개만 주석해제
+##사용할 java 버전 1개만 주석해제함
 ############################
 
 vi /root/.bashrc
