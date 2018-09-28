@@ -90,11 +90,24 @@ cd $CATALINA_HOME/bin
 ./startup.sh
 ps -ef
 
+exit
+
+############################
+##이미지 커밋 및 업로드
+############################
 
 
-###########################
-# 이미지 커밋 및 업로드
-###########################
+docker stop mytomcat
+docker ps -a
+
+#변겨이력용 으로 하나더 생성
+docker commit CON-ID  reg.hmp.com:443/mytomcat:latest
+docker commit CON-ID  reg.hmp.com:443/mytomcat-20180928-1039:latest
+
+docker images
+docker push reg.hmp.com:443/mytomcat:latest
+curl https://reg.hmp.com/v2/_catalog
+
 
 
 
