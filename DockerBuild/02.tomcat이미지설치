@@ -1,2 +1,78 @@
 
 #골든이미지 mycentos7에
+
+
+
+############################
+##기존 이미지 로드
+############################
+
+docker run -dit --name mytomcat reg.hmp.com:443/mycentos7:latest
+docker start mytomcat
+docker exec -it mytomcat /bin/bash
+
+#######################
+# TOMCAT 설치(root)
+#######################
+
+cd /app/
+
+#톰캣9 설치
+wget http://10.10.63.63:8089/downloads/tomcat/apache-tomcat-9.0.7_r20180407.tar.gz
+ll
+tar zxvf apache-tomcat-9.0.7_r20180407.tar.gz
+ll
+mv /app/apache-tomcat-9.0.7  /app/tomcat9
+
+#톰캣8.5 설치
+wget http://10.10.63.63:8089/downloads/tomcat/apache-tomcat-8.5.30_r20180403.tar.gz
+ll
+tar zxvf apache-tomcat-8.5.30_r20180403.tar.gz
+ll
+mv /app/apache-tomcat-8.5.30 /app/tomcat8
+ll
+
+
+#톰캣7 설치
+wget http://10.10.63.63:8089/downloads/tomcat/apache-tomcat-7.0.86_r20180413.tar.gz
+ll
+tar zxvf apache-tomcat-7.0.86_r20180413.tar.gz
+ll
+mv /app/apache-tomcat-7.0.86 /app/tomcat7
+ll
+
+#설치본 삭제
+rm -f /app/apache-tomcat-9.0.7_r20180407.tar.gz
+rm -f /app/apache-tomcat-8.5.30_r20180403.tar.gz
+rm -f /app/apache-tomcat-7.0.86_r20180413.tar.gz
+
+
+
+###########################
+# 환경변수등록(root)
+###########################
+
+vi /root/.bashrc
+------------------------------------------------------------------------------------
+###############
+###TOMCAT
+###############
+export CATALINA_HOME=/app/tomcat7  #update this
+export PATH=$PATH:$CATALINA_HOME/bin
+export CLASSPATH=$CLASSPATH:$CATALINA_HOME/lib-jsp-api.jar:$CATALINA_HOME/lib/servlet-api.jar
+------------------------------------------------------------------------------------
+
+
+###########################
+# 참고. 메트릭스
+###########################
+
+tomcat9 = java8 이상
+tomcat8.5 = java7 이상
+tomcat 7 = java6 이상
+
+
+
+
+
+
