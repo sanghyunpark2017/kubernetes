@@ -13,6 +13,39 @@ docker run -dit --name mycentos7 reg.hmp.com:443/mycentos7beta:1
 docker start mycentos7
 docker exec -it mycentos7 /bin/bash
 
+
+############################
+##계정추가
+############################
+
+groupadd -g 501 opmon
+useradd -g 501 -u 501 opmon
+
+passwd opmon
+************
+
+
+groupadd -g 502 wasadm
+useradd -g 502 -u 502 wasadm
+
+passwd wasadm
+************
+
+
+groupadd -g 503 dba
+useradd -g 503 -u 503 oracle
+
+passwd oracle
+************
+
+vi /home/wasadm/.bashrc
+vi /home/opmon/.bashrc
+vi /home/oracle/.bashrc
+----------------------------------------
+export PS1="\[\e[36;1m\]\u@\[\e[32;1m\]\h:\[\e[31;1m\]\w# \[\e[0m\]"
+alias ll='ls -al'
+----------------------------------------
+
 ############################
 ##openjdk6/7/8 설치
 ############################
@@ -111,7 +144,7 @@ docker ps -a
 
 #변겨이력용 으로 하나더 생성
 docker commit CON-ID  reg.hmp.com:443/mycentos7:latest
-docker commit CON-ID  reg.hmp.com:443/mycentos7-20180928-1009:latest
+docker commit CON-ID  reg.hmp.com:443/mycentos7-20180928-1541:latest
 
 docker images
 docker push reg.hmp.com:443/mycentos7:latest
@@ -124,19 +157,6 @@ curl https://reg.hmp.com/v2/_catalog
 
 
 
-
-
-
-###########################
-# 톰캣 환경변수등록
-###########################
-
-------------------------------------------------------------------------------------
-###TOMCAT
-export CATALINA_HOME=/app/tomcat7  #update this
-export PATH=$PATH:$CATALINA_HOME/bin
-export CLASSPATH=$CLASSPATH:$CATALINA_HOME/lib-jsp-api.jar:$CATALINA_HOME/lib/servlet-api.jar
-------------------------------------------------------------------------------------
 
 
 
