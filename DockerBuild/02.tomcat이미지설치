@@ -47,6 +47,15 @@ rm -f /app/apache-tomcat-8.5.30_r20180403.tar.gz
 rm -f /app/apache-tomcat-7.0.86_r20180413.tar.gz
 
 
+###########################
+# 참고. 메트릭스
+###########################
+
+tomcat9 = java8 이상
+tomcat8.5 = java7 이상
+tomcat 7 = java6 이상
+
+
 
 ###########################
 # 환경변수등록(root)
@@ -64,12 +73,55 @@ export CLASSPATH=$CLASSPATH:$CATALINA_HOME/lib-jsp-api.jar:$CATALINA_HOME/lib/se
 
 
 ###########################
-# 참고. 메트릭스
+# java와 tomcat 확인
+###########################
+exit
+docker exec -it mytomcat /bin/bash
+
+
+echo $JAVA_HOME
+echo $CATALINA_HOME
+echo $PATH
+
+java -version
+
+
+cd $CATALINA_HOME/bin
+./startup.sh
+ps -ef
+
+
+
+###########################
+# 이미지 커밋 및 업로드
 ###########################
 
-tomcat9 = java8 이상
-tomcat8.5 = java7 이상
-tomcat 7 = java6 이상
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
