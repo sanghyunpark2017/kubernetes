@@ -38,9 +38,9 @@ spec:
         - name: CATALINA_HOME
           value: "/app/tomcat8"
         - name: PATH
-          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-3.b13.el7_5.x86_64/bin:/app/tomcat9/bin"
+          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-3.b13.el7_5.x86_64/bin:/app/tomcat8/bin"
         - name: CLASSPATH
-          value: "/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-3.b13.el7_5.x86_64/lib/tools.jar:/app/tomcat9/lib/servlet-api.jar"
+          value: "/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-3.b13.el7_5.x86_64/lib/tools.jar:/app/tomcat8/lib/servlet-api.jar"
         ports:
         - name: port8009
           containerPort: 8009
