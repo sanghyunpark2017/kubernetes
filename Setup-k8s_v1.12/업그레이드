@@ -1,0 +1,196 @@
+
+#v1.11 버전에서 v.12로 업그레이드
+
+###########################
+# 오류노트
+###########################
+-없음
+
+
+
+
+1. control plane 업그레이드
+
+##master서버 각각 실행
+kubeadm version
+yum upgrade -y kubeadm --disableexcludes=kubernetes
+kubeadm version
+
+
+kubeadm upgrade plan
+
+
+
+
+2. 클러스터 버전 업그레이드(master 1대만 실행)
+
+kubeadm upgrade apply v1.12.0
+
+
+
+########################################
+########################################
+3. master 패키지 업그레이드
+########################################
+########################################
+
+
+
+#######################
+# 마스터3번 업그레이드
+#######################
+
+
+#t1vkubeadm1에서 실행
+kubectl drain t1vkubeadm3 --ignore-daemonsets
+kubectl get nodes
+
+
+#t1vkubeadm3에서 실행
+yum upgrade -y kubelet kubeadm --disableexcludes=kubernetes
+
+kubeadm upgrade node config --kubelet-version $(kubelet --version | cut -d ' ' -f 2)
+
+
+systemctl daemon-reload
+sudo systemctl restart kubelet
+systemctl status kubelet
+
+#t1vkubeadm1에서 실행
+
+kubectl uncordon t1vkubeadm3 
+kubectl get nodes
+
+
+#######################
+# 마스터2번 업그레이드
+#######################
+
+
+#t1vkubeadm1에서 실행
+kubectl drain t1vkubeadm2 --ignore-daemonsets
+kubectl get nodes
+
+
+#t1vkubeadm2에서 실행
+yum upgrade -y kubelet kubeadm --disableexcludes=kubernetes
+
+kubeadm upgrade node config --kubelet-version $(kubelet --version | cut -d ' ' -f 2)
+
+
+systemctl daemon-reload
+sudo systemctl restart kubelet
+systemctl status kubelet
+
+#t1vkubeadm1에서 실행
+
+kubectl uncordon t1vkubeadm2 
+kubectl get nodes
+
+
+#######################
+# 마스터1번 업그레이드
+#######################
+
+
+#t1vkubeadm2에서 실행
+kubectl drain t1vkubeadm1 --ignore-daemonsets
+kubectl get nodes
+
+
+#t1vkubeadm1에서 실행
+yum upgrade -y kubelet kubeadm --disableexcludes=kubernetes
+
+kubeadm upgrade node config --kubelet-version $(kubelet --version | cut -d ' ' -f 2)
+
+
+systemctl daemon-reload
+sudo systemctl restart kubelet
+systemctl status kubelet
+
+#t1vkubeadm2에서 실행
+
+kubectl uncordon t1vkubeadm1 
+kubectl get nodes
+
+
+
+
+
+
+########################################
+########################################
+4. node 패키지 업그레이드
+########################################
+########################################
+
+
+#######################
+##worker 1번 업그레이드
+#######################
+
+#마스터서버 에서 drain
+kubectl drain t1vkubework1 --ignore-daemonsets
+
+#worker1번 POD들이 다른 worker로 이동됨
+kubectl get pod -o wide
+
+
+#workwer 1번에서 실행
+kubeadm version
+yum upgrade -y kubeadm --disableexcludes=kubernetes
+kubeadm version
+
+yum upgrade -y kubelet kubeadm --disableexcludes=kubernetes
+
+sudo kubeadm upgrade node config --kubelet-version $(kubelet --version | cut -d ' ' -f 2)
+
+
+systemctl daemon-reload
+sudo systemctl restart kubelet
+systemctl status kubelet
+
+
+#마스터서버에서 uncordon
+kubectl uncordon t1vkubework1 
+
+#마스터서버에서 버전 업 확인
+kubectl get nodes -o wide
+
+
+######################
+##worker 2번 업그레이드
+#######################
+
+kubectl drain t1vkubework2 --ignore-daemonsets
+
+kubectl get pod -o wide
+
+
+(반복수행)
+
+kubectl uncordon t1vkubework2
+
+kubectl get nodes -o wide
+
+
+######################
+##worker 3번 업그레이드
+#######################
+
+kubectl drain t1vkubework3 --ignore-daemonsets
+
+kubectl get pod -o wide
+
+
+(반복수행)
+
+kubectl uncordon t1vkubework3
+
+kubectl get nodes -o wide
+
+
+
+
+
+
