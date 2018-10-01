@@ -45,8 +45,13 @@ chmod -R 777 /nfs/public
 chmod -R 777 /nfs/private
 
 vi /etc/exports
+------------------------------------------------------------------------------------
 /nfs/public 10.10.64.0/24(rw,sync,no_root_squash,no_all_squash)
 /nfs/private 10.10.64.0/24(rw,sync,no_root_squash,no_all_squash)
+
+/nfs/public 10.10.29.0/24(rw,sync,no_root_squash,no_all_squash)
+/nfs/private 10.10.29.0/24(rw,sync,no_root_squash,no_all_squash)
+------------------------------------------------------------------------------------
 
 yum install firewalld
 systemctl enable firewalld
