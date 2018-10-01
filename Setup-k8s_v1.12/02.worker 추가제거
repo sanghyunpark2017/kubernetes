@@ -1,0 +1,20 @@
+
+#Add node
+kubeadm token create --print-join-command
+
+
+
+#Drain nodes
+kubectl drain t1vkubework1
+kubectl drain t1vkubework2
+kubectl drain t1vkubework3
+
+
+
+#Delete nodes
+kubectl delete node t1vkubework1
+kubectl delete node t1vkubework2
+kubectl delete node t1vkubework3
+
+
+
