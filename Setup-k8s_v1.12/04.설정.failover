@@ -1,0 +1,11 @@
+
+
+참조 : https://fatalfailure.wordpress.com/2016/06/10/improving-kubernetes-reliability-quicker-detection-of-a-node-down/
+
+kubelet: node-status-update-frequency=4s (from 10s)
+controller-manager: node-monitor-period=2s (from 5s)
+controller-manager: node-monitor-grace-period=16s (from 40s)
+controller-manager: pod-eviction-timeout=30s (from 5m)
+
+
+
