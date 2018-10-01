@@ -1,15 +1,20 @@
 
+
 ##########################
-# WOKER 추가 전 private hub 인증서등록
+# WOKER 추가 전 사전작업
 ##########################
 
+1) private hub 인증서등록
+=> 참조  "kubernetes/Setup-k8s_v1.11/08.Registry 및 Worker 인증서등록"
 
-=> "kubernetes/Setup-k8s_v1.11/08.Registry 및 Worker 인증서등록"
+2) 신규  wokrer에 NFS 연결
+=> 참조 "kubernetes/Setup-k8s_v1.11/10.NFS클라이언트"
 
 
 
-
-
+##########################
+# 작업
+##########################
 
 #Add node
 kubeadm token create --print-join-command
