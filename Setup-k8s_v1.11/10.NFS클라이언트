@@ -11,6 +11,8 @@ yum install -y nfs-utils
 
 
 systemctl enable rpcbind
+
+systemctl stop rpcbind
 systemctl start rpcbind
 
 showmount -e 10.10.64.90
