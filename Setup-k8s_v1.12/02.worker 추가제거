@@ -1,4 +1,16 @@
 
+##########################
+# WOKER 추가 전 private hub 인증서등록
+##########################
+
+
+=> "kubernetes/Setup-k8s_v1.11/08.Registry 및 Worker 인증서등록"
+
+
+
+
+
+
 #Add node
 kubeadm token create --print-join-command
 
