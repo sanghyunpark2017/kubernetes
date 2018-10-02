@@ -1,11 +1,36 @@
 
 
-참조 : https://fatalfailure.wordpress.com/2016/06/10/improving-kubernetes-reliability-quicker-detection-of-a-node-down/
+참조 : 
+https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/
+https://github.com/kubernetes-incubator/kubespray/blob/master/docs/kubernetes-reliability.md
 
+###############
+# 개요
+###############
+worker node 다운을 빨리 감지하여 pod eviction하기 위함
+수치를 낮추면 노드수 증가 대비 1분당 ping하는 횟수가 많아지고, etcd 용량 증가를 불러옴
+=> 결론 : 설정은 디폴트로 놔두거나 소폭 낮추고, 레플리카 2~4개 사용함
+
+
+#참조 문서에서 권장하는 최대 감지 옵션
 kubelet: node-status-update-frequency=4s (from 10s)
 controller-manager: node-monitor-period=2s (from 5s)
 controller-manager: node-monitor-grace-period=16s (from 40s)
 controller-manager: pod-eviction-timeout=30s (from 5m)
 
 
+#적용
 
+1. 명령어
+kubelet --node-status-update-frequency=10s
+
+
+
+2.config
+bk /etc/kubernetes/manifests/kube-controller-manager.yaml
+vi /etc/kubernetes/manifests/kube-controller-manager.yaml
+-----------------------------------------------------------------------------------------------
+    - --node-monitor-period=2s
+    - --node-monitor-grace-period=20s
+    - --pod-eviction-timeout=30s
+-----------------------------------------------------------------------------------------------
