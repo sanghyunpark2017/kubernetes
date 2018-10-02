@@ -1,4 +1,12 @@
 
+###############
+# 오류노트
+###############
+-worker 노드 다운 시 감지는 빠르게 되나 pod-eviction-timeout은 적용되지 않음
+-그러나,, 쉐도우 적용(?)인지 컨테이너 배포할 때 설정 등의 문제로 즉시 생성되지 않으면
+ 이 값 30초에 의해 컨테이너가 생성 삭제가 누적됨
+
+
 
 참조 : 
 https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/
