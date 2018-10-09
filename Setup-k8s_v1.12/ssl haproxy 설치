@@ -99,6 +99,11 @@ systemctl enable haproxy
 
 
 
+##############
+# 점검
+##############
+
+http://x.x.x.x:8888/haproxy (admin/1234)
 
 
 
