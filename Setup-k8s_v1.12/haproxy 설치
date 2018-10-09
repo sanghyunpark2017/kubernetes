@@ -1,0 +1,109 @@
+
+
+
+https://blog.one0.me/etc/CentOS7%EC%97%90-HAProxy-%EC%84%A4%EC%B9%98%ED%95%98%EA%B8%B0/
+
+
+sudo yum -y install wget gcc pcre-static pcre-devel openssl-devel
+
+wget https://www.haproxy.org/download/1.8/src/haproxy-1.8.3.tar.gz ~/haproxy-1.8.3.tar.gz
+
+tar xzvf ~/haproxy-1.8.3.tar.gz -C ~/
+
+
+cd ~/haproxy-1.8.3
+
+make TARGET=linux2628 USE_OPENSSL=1
+
+
+sudo make install
+
+
+mkdir -p /etc/haproxy
+mkdir -p /var/lib/haproxy
+touch /var/lib/haproxy/stats
+vi /etc/haproxy/haproxy.cfg
+----------------------------------------------------------------------
+global
+  log /dev/log local0
+  log /dev/log local1 notice
+  chroot /var/lib/haproxy
+  stats timeout 30s
+  user haproxy
+  group haproxy
+  daemon
+
+defaults
+  # 기본 설정
+  log global
+  mode http
+  option httplog
+  option dontlognull
+  timeout connect 5000ms
+  timeout client 50000ms
+  timeout server 50000ms
+
+listen stats
+  # HAProxy 모니터링 설정
+  bind :8888
+  mode http
+  log global
+
+  maxconn 10
+
+  clitimeout 100s
+  srvtimeout 100s
+  contimeout 100s
+  timeout queue 100s
+
+  stats enable
+  stats hide-version
+  stats refresh 30s
+  stats show-node
+  stats auth admin:1234
+  stats uri /haproxy
+
+frontend http_front
+  bind *:80
+  default_backend http_back
+
+backend http_back
+  # 헬스체크
+  option httpchk GET /
+  http-check expect status 200
+  default-server inter 1s fall 3 rise 2
+  # 로드 밸런싱
+  balance roundrobin
+  server api1 localhost:8081 check
+  server api2 localhost:8082 check
+----------------------------------------------------------------------
+
+
+
+cp ~/haproxy-1.8.3/examples/haproxy.init /etc/init.d/haproxy
+chmod 755 /etc/init.d/haproxy
+
+
+
+ln -s /usr/local/sbin/haproxy /usr/sbin/haproxy
+
+sudo useradd -r haproxy
+
+reboot
+
+
+
+systemctl start haproxy
+systemctl enable haproxy
+
+
+
+
+
+
+
+
+
+
+
+
